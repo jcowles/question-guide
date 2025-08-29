@@ -461,7 +461,7 @@ export const ChatInterface = () => {
 
     // Create assistant message for tool calls first (don't show this in UI)
     const assistantMessage: ChatMessageType = {
-      id: `assistant-${Date.now()}`,
+      id: aiMessageId, // Use consistent aiMessageId instead of generated ID
       role: 'assistant',
       content: '', // Empty string instead of null to avoid display issues
       timestamp: new Date(),
