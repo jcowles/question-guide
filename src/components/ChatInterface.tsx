@@ -105,6 +105,7 @@ export const ChatInterface = () => {
 
     // Add debug message to chat if debug mode is enabled
     if (debugMode && currentThread) {
+      console.log('Adding debug tool result message');
       const debugMessage: ChatMessageType = {
         id: `debug-tool-${Date.now()}`,
         role: 'system',
@@ -442,7 +443,13 @@ export const ChatInterface = () => {
   const visibleMessages = currentThread?.messages.filter(m => {
     // Hide system messages except debug messages (show debug messages once added, regardless of current debug mode)
     if (m.role === 'system') {
-      return m.content.includes('🔧 **MCP Tool Result') || m.content.includes('🚀 **OpenAI Request');
+      const isDebugMessage = m.content.includes('🔧 **MCP Tool Result') || m.content.includes('🚀 **OpenAI Request');
+      console.log('System message filter:', { 
+        id: m.id, 
+        isDebugMessage, 
+        contentStart: m.content.substring(0, 50) 
+      });
+      return isDebugMessage;
     }
     // Hide tool messages
     return m.role !== 'tool';
