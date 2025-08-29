@@ -147,6 +147,9 @@ export class OpenAIService {
     onToolResult?: (toolName: string, result: any, error?: string) => void
   ): Promise<void> {
     try {
+      // Track accumulating tool calls
+      const accumulatingToolCalls = new Map<number, Partial<ToolCall>>();
+      
       const response = await fetch(`${this.baseURL}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -203,22 +206,63 @@ export class OpenAIService {
             try {
               const parsed = JSON.parse(data);
               const delta = parsed.choices?.[0]?.delta;
+              const finishReason = parsed.choices?.[0]?.finish_reason;
               
               if (delta?.content) {
                 onChunk(delta.content);
               }
               
+              // Handle tool calls - accumulate chunks
               if (delta?.tool_calls) {
-                for (const toolCall of delta.tool_calls) {
-                  if (toolCall.function?.name && onToolCall) {
-                    onToolCall(toolCall);
+                for (const toolCallDelta of delta.tool_calls) {
+                  const index = toolCallDelta.index || 0;
+                  
+                  // Initialize or update accumulating tool call
+                  if (!accumulatingToolCalls.has(index)) {
+                    accumulatingToolCalls.set(index, {
+                      id: toolCallDelta.id,
+                      type: 'function',
+                      function: {
+                        name: '',
+                        arguments: ''
+                      }
+                    });
+                  }
+                  
+                  const accumulating = accumulatingToolCalls.get(index)!;
+                  
+                  // Accumulate function data
+                  if (toolCallDelta.function?.name) {
+                    accumulating.function!.name = toolCallDelta.function.name;
+                  }
+                  if (toolCallDelta.function?.arguments) {
+                    accumulating.function!.arguments += toolCallDelta.function.arguments;
+                  }
+                }
+              }
+              
+              // Process completed tool calls when streaming finishes
+              if (finishReason === 'tool_calls' && onToolCall) {
+                for (const [index, toolCall] of accumulatingToolCalls.entries()) {
+                  if (toolCall.function?.name && toolCall.function?.arguments) {
+                    const completeToolCall: ToolCall = {
+                      id: toolCall.id || `tool-${Date.now()}-${index}`,
+                      type: 'function',
+                      function: {
+                        name: toolCall.function.name,
+                        arguments: toolCall.function.arguments
+                      }
+                    };
+                    
+                    onToolCall(completeToolCall);
                     // Simulate tool execution
-                    this.executeMCPTool(toolCall, onToolResult);
+                    this.executeMCPTool(completeToolCall, onToolResult);
                   }
                 }
               }
             } catch (e) {
               // Ignore parsing errors for malformed chunks
+              console.warn('Error parsing streaming chunk:', e);
             }
           }
         }
