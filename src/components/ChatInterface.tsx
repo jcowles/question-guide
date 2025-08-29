@@ -424,6 +424,11 @@ export const ChatInterface = () => {
       currentThread: !!currentThread
     });
     
+    console.log('🔧 ENTRY currentSessionToolResults:', {
+      length: currentSessionToolResults.length,
+      details: currentSessionToolResults.map(r => ({ toolName: r.toolName, hasResult: !!r.result }))
+    });
+    
     if (!openAIService || !currentThread || executedTools.length === 0) {
       console.log('❌ Early return from handleToolExecutionComplete:', {
         openAIService: !!openAIService,
@@ -524,6 +529,11 @@ export const ChatInterface = () => {
           messagesWithTools: messagesWithTools.length
         });
       }
+      
+      console.log('🔧 BEFORE FINAL STREAM currentSessionToolResults:', {
+        length: currentSessionToolResults.length,
+        details: currentSessionToolResults.map(r => ({ toolName: r.toolName, hasResult: !!r.result }))
+      });
 
       await openAIService.sendMessageStream(
         messagesWithTools,
