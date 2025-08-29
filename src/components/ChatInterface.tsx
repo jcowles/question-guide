@@ -55,7 +55,6 @@ The title should be descriptive and capture the main topic. Return only the titl
             { role: 'user', content: titlePrompt }
           ],
           max_completion_tokens: 20,
-          temperature: 0.3,
         }),
       });
 
