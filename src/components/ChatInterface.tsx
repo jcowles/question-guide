@@ -419,6 +419,7 @@ export const ChatInterface = () => {
     try {
       let finalResponse = '';
       setStreamingContent('');
+      setStreamingMessageId(aiMessageId); // Set streaming ID for final response
 
       // Debug logging for messages with tools
       if (debugMode) {
