@@ -4,12 +4,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Plus, 
+  SquarePen, 
   MessageSquare, 
   Settings, 
   Trash2,
-  Gamepad2,
-  Cpu
+  Cloud,
+  Gamepad2
 } from 'lucide-react';
 import { ChatThread, ChatSection } from '@/services/openai';
 import { ThreadManager } from '@/services/threadManager';
@@ -51,9 +51,18 @@ export const ChatSidebar = ({
   const getSectionIcon = (section: ChatSection) => {
     switch (section) {
       case 'steam':
-        return <Gamepad2 size={16} />;
+        return <Cloud size={16} />;
       case 'source2':
-        return <Cpu size={16} />;
+        return <Gamepad2 size={16} />;
+    }
+  };
+
+  const getSectionBg = (section: ChatSection) => {
+    switch (section) {
+      case 'steam':
+        return 'bg-blue-600 hover:bg-blue-700'; // Steam blue
+      case 'source2':
+        return 'bg-orange-600 hover:bg-orange-700'; // Valve red-orange
     }
   };
 
@@ -85,11 +94,11 @@ export const ChatSidebar = ({
             <Button
               key={section}
               variant={currentSection === section ? "default" : "ghost"}
-          className={`w-full justify-start gap-2 ${
-            currentSection === section 
-              ? `bg-primary text-primary-foreground hover:bg-primary/90` 
-              : ''
-          }`}
+              className={`w-full justify-start gap-2 text-white ${
+                currentSection === section 
+                  ? getSectionBg(section)
+                  : 'hover:bg-muted/50 text-foreground'
+              }`}
               onClick={() => onSectionChange(section)}
             >
               {getSectionIcon(section)}
@@ -106,9 +115,10 @@ export const ChatSidebar = ({
       <div className="p-4 border-b">
         <Button 
           onClick={onNewThread} 
-          className="w-full gap-2 message-user border-0"
+          variant="ghost"
+          className="w-full gap-2 text-muted-foreground hover:text-foreground hover:bg-muted/50"
         >
-          <Plus size={16} />
+          <SquarePen size={16} />
           New Chat
         </Button>
       </div>
