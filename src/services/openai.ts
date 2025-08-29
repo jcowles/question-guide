@@ -3,6 +3,24 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
+  toolCalls?: ToolCall[];
+}
+
+export interface ToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+export interface MCPToolStatus {
+  toolName: string;
+  status: 'calling' | 'success' | 'error';
+  timestamp: Date;
+  result?: any;
+  error?: string;
 }
 
 export interface ChatThread {
@@ -31,6 +49,63 @@ export const SYSTEM_MESSAGES: Record<ChatSection, string> = {
 export class OpenAIService {
   private apiKey: string;
   private baseURL = 'https://api.openai.com/v1';
+  private mcpTools = [
+    {
+      type: "function",
+      function: {
+        name: "web_search",
+        description: "Search the web for current information",
+        parameters: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "Search query"
+            }
+          },
+          required: ["query"]
+        }
+      }
+    },
+    {
+      type: "function", 
+      function: {
+        name: "file_analyzer",
+        description: "Analyze file contents and structure",
+        parameters: {
+          type: "object",
+          properties: {
+            filePath: {
+              type: "string",
+              description: "Path to the file to analyze"
+            }
+          },
+          required: ["filePath"]
+        }
+      }
+    },
+    {
+      type: "function",
+      function: {
+        name: "code_executor",
+        description: "Execute code snippets safely",
+        parameters: {
+          type: "object", 
+          properties: {
+            code: {
+              type: "string",
+              description: "Code to execute"
+            },
+            language: {
+              type: "string",
+              description: "Programming language"
+            }
+          },
+          required: ["code", "language"]
+        }
+      }
+    }
+  ];
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
@@ -67,7 +142,9 @@ export class OpenAIService {
     messages: ChatMessage[],
     onChunk: (chunk: string) => void,
     onComplete: () => void,
-    onError: (error: Error) => void
+    onError: (error: Error) => void,
+    onToolCall?: (toolCall: ToolCall) => void,
+    onToolResult?: (toolName: string, result: any, error?: string) => void
   ): Promise<void> {
     try {
       const response = await fetch(`${this.baseURL}/chat/completions`, {
@@ -81,7 +158,10 @@ export class OpenAIService {
           messages: messages.map(msg => ({
             role: msg.role,
             content: msg.content,
+            ...(msg.toolCalls && { tool_calls: msg.toolCalls })
           })),
+          tools: this.mcpTools,
+          tool_choice: "auto",
           max_tokens: 1500,
           temperature: 0.7,
           stream: true,
@@ -122,9 +202,20 @@ export class OpenAIService {
 
             try {
               const parsed = JSON.parse(data);
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) {
-                onChunk(content);
+              const delta = parsed.choices?.[0]?.delta;
+              
+              if (delta?.content) {
+                onChunk(delta.content);
+              }
+              
+              if (delta?.tool_calls) {
+                for (const toolCall of delta.tool_calls) {
+                  if (toolCall.function?.name && onToolCall) {
+                    onToolCall(toolCall);
+                    // Simulate tool execution
+                    this.executeMCPTool(toolCall, onToolResult);
+                  }
+                }
               }
             } catch (e) {
               // Ignore parsing errors for malformed chunks
@@ -147,5 +238,60 @@ export class OpenAIService {
 
   static clearApiKey(): void {
     localStorage.removeItem('openai-api-key');
+  }
+
+  private async executeMCPTool(toolCall: ToolCall, onToolResult?: (toolName: string, result: any, error?: string) => void): Promise<void> {
+    const { name, arguments: args } = toolCall.function;
+    
+    try {
+      let result: any;
+      
+      switch (name) {
+        case 'web_search':
+          result = await this.simulateWebSearch(JSON.parse(args).query);
+          break;
+        case 'file_analyzer':
+          result = await this.simulateFileAnalysis(JSON.parse(args).filePath);
+          break;
+        case 'code_executor':
+          const { code, language } = JSON.parse(args);
+          result = await this.simulateCodeExecution(code, language);
+          break;
+        default:
+          throw new Error(`Unknown tool: ${name}`);
+      }
+      
+      onToolResult?.(name, result);
+    } catch (error) {
+      onToolResult?.(name, null, error instanceof Error ? error.message : 'Unknown error');
+    }
+  }
+
+  private async simulateWebSearch(query: string): Promise<any> {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+    return {
+      results: [`Search result for "${query}"`],
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  private async simulateFileAnalysis(filePath: string): Promise<any> {
+    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 1500));
+    return {
+      filePath,
+      size: Math.floor(Math.random() * 10000),
+      type: 'text/javascript',
+      analysis: `Analysis complete for ${filePath}`
+    };
+  }
+
+  private async simulateCodeExecution(code: string, language: string): Promise<any> {
+    await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2500));
+    return {
+      output: `Executed ${language} code successfully`,
+      exitCode: 0,
+      executionTime: Math.random() * 1000
+    };
   }
 }

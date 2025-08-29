@@ -3,7 +3,8 @@ import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { ChatSidebar } from './ChatSidebar';
 import { ApiKeyDialog } from './ApiKeyDialog';
-import { OpenAIService, ChatMessage as ChatMessageType, ChatSection, SYSTEM_MESSAGES, ChatThread } from '@/services/openai';
+import { MCPStatusBar } from './MCPStatusBar';
+import { OpenAIService, ChatMessage as ChatMessageType, ChatSection, SYSTEM_MESSAGES, ChatThread, ToolCall, MCPToolStatus } from '@/services/openai';
 import { ThreadManager } from '@/services/threadManager';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Gamepad2, Cloud } from 'lucide-react';
@@ -19,6 +20,8 @@ export const ChatInterface = () => {
   const [openAIService, setOpenAIService] = useState<OpenAIService | null>(null);
   const [showApiDialog, setShowApiDialog] = useState(false);
   const [sidebarUpdateTrigger, setSidebarUpdateTrigger] = useState(0);
+  const [mcpToolStatuses, setMcpToolStatuses] = useState<MCPToolStatus[]>([]);
+  const [showMcpStatus, setShowMcpStatus] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -70,6 +73,46 @@ export const ChatInterface = () => {
     const newThread = ThreadManager.createThread(currentSection);
     setCurrentThreadId(newThread.id);
     setCurrentThread(newThread);
+  };
+
+  const handleToolCall = (toolCall: ToolCall) => {
+    const newStatus: MCPToolStatus = {
+      toolName: toolCall.function.name,
+      status: 'calling',
+      timestamp: new Date(),
+    };
+    
+    setMcpToolStatuses(prev => [...prev, newStatus]);
+    setShowMcpStatus(true);
+  };
+
+  const handleToolResult = (toolName: string, result: any, error?: string) => {
+    setMcpToolStatuses(prev => 
+      prev.map(status => 
+        status.toolName === toolName && status.status === 'calling'
+          ? { 
+              ...status, 
+              status: error ? 'error' as const : 'success' as const,
+              result,
+              error,
+              timestamp: new Date()
+            }
+          : status
+      )
+    );
+
+    // Auto-hide status bar after 5 seconds if all tools completed
+    setTimeout(() => {
+      setMcpToolStatuses(prev => {
+        const hasActiveCalls = prev.some(status => status.status === 'calling');
+        if (!hasActiveCalls) {
+          setShowMcpStatus(false);
+          // Clear statuses after animation completes
+          setTimeout(() => setMcpToolStatuses([]), 300);
+        }
+        return prev;
+      });
+    }, 5000);
   };
 
   const handleSendMessage = async (content: string) => {
@@ -156,7 +199,9 @@ export const ChatInterface = () => {
           setIsLoading(false);
           setStreamingContent('');
           setStreamingMessageId(null);
-        }
+        },
+        handleToolCall,
+        handleToolResult
       );
     } catch (error) {
       console.error('Error sending message:', error);
@@ -281,6 +326,12 @@ export const ChatInterface = () => {
         {/* Input */}
         <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
       </div>
+
+      {/* MCP Status Bar */}
+      <MCPStatusBar 
+        toolStatuses={mcpToolStatuses}
+        isVisible={showMcpStatus}
+      />
 
       {/* API Key Dialog */}
       <ApiKeyDialog
