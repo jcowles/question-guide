@@ -40,6 +40,8 @@ export class ThreadManager {
   }
 
   static createThread(section: ChatSection, name?: string): ChatThread {
+    console.log('🧵 CREATING NEW THREAD:', { section, name, stackTrace: new Error().stack?.split('\n')[2] });
+    
     const thread: ChatThread = {
       id: Date.now().toString(),
       name: name || `Chat ${new Date().toLocaleDateString()}`,
