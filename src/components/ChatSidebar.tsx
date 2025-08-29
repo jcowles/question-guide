@@ -140,9 +140,6 @@ export const ChatSidebar = ({
               <MessageSquare size={14} className="flex-shrink-0 text-muted-foreground" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{thread.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {thread.messages.length} messages • {thread.updatedAt.toLocaleDateString()}
-                </p>
               </div>
               <Button
                 variant="ghost"
