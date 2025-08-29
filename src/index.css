@@ -6,9 +6,9 @@
 
 @layer base {
   :root {
-    /* Main background - original colors */
-    --background: 220 20% 97%;
-    --background-secondary: 215 25% 94%;
+    /* Main background - charcoal theme */
+    --background: 220 15% 20%;
+    --background-secondary: 215 20% 18%;
     --foreground: 222 25% 15%;
 
     /* Chat specific colors - original purple/blue but flat */
@@ -66,9 +66,9 @@
   }
 
   .dark {
-    /* Original dark mode colors */
-    --background: 222 20% 8%;
-    --background-secondary: 215 25% 6%;
+    /* Dark mode charcoal colors */
+    --background: 222 15% 15%;
+    --background-secondary: 215 20% 13%;
     --foreground: 220 15% 95%;
 
     --chat-user-bg: 262 83% 58%;  /* Same purple in dark mode */
