@@ -160,7 +160,7 @@ export class OpenAIService {
         body: JSON.stringify({
           model: 'gpt-4o',
           messages: messages.map(msg => {
-            const baseMessage = {
+            const baseMessage: any = {
               role: msg.role,
               content: msg.content,
             };
