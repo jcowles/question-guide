@@ -65,6 +65,10 @@ export const ChatInterface = () => {
 
   const handleSectionChange = (section: ChatSection) => {
     setCurrentSection(section);
+    // Clear tool results when changing sections
+    setMessageToolResults({});
+    setCurrentSessionToolResults([]);
+    setMcpToolStatuses([]);
   };
 
   const handleThreadSelect = (threadId: string) => {
@@ -72,6 +76,10 @@ export const ChatInterface = () => {
     if (thread) {
       setCurrentThreadId(threadId);
       setCurrentThread(thread);
+      // Clear tool results when switching threads
+      setMessageToolResults({});
+      setCurrentSessionToolResults([]);
+      setMcpToolStatuses([]);
     }
   };
 
@@ -79,6 +87,10 @@ export const ChatInterface = () => {
     const newThread = ThreadManager.createThread(currentSection);
     setCurrentThreadId(newThread.id);
     setCurrentThread(newThread);
+    // Clear tool results when creating new thread
+    setMessageToolResults({});
+    setCurrentSessionToolResults([]);
+    setMcpToolStatuses([]);
   };
 
   const handleToolCall = (toolCall: ToolCall) => {
