@@ -12,9 +12,10 @@ interface ChatMessageProps {
 export const ChatMessage = ({ message, isTyping = false, streamingContent }: ChatMessageProps) => {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
+  const isTool = message.role === 'tool';
   
-  // Don't render system messages
-  if (isSystem) return null;
+  // Don't render system messages or tool messages
+  if (isSystem || isTool) return null;
 
   return (
     <div className={`flex gap-3 mb-4 animate-message-in ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>

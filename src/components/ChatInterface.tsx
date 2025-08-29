@@ -167,6 +167,8 @@ export const ChatInterface = () => {
 
     try {
       let fullResponse = '';
+      let hasToolCalls = false;
+      const executedTools: any[] = [];
       
       await openAIService.sendMessageStream(
         messages,
@@ -176,18 +178,24 @@ export const ChatInterface = () => {
         },
         () => {
           // Stream completed
-          const aiMessage: ChatMessageType = {
-            id: aiMessageId,
-            role: 'assistant',
-            content: fullResponse,
-            timestamp: new Date(),
-          };
+          if (!hasToolCalls) {
+            // Regular message without tool calls
+            const aiMessage: ChatMessageType = {
+              id: aiMessageId,
+              role: 'assistant',
+              content: fullResponse,
+              timestamp: new Date(),
+            };
 
-          ThreadManager.addMessageToThread(currentSection, currentThread.id, aiMessage);
-          setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, aiMessage] } : null);
-          setIsLoading(false);
-          setStreamingContent('');
-          setStreamingMessageId(null);
+            ThreadManager.addMessageToThread(currentSection, currentThread.id, aiMessage);
+            setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, aiMessage] } : null);
+            setIsLoading(false);
+            setStreamingContent('');
+            setStreamingMessageId(null);
+          } else {
+            // Tool calls completed, now get the final response
+            handleToolExecutionComplete(messages, executedTools, aiMessageId);
+          }
         },
         (error: Error) => {
           console.error('Streaming error:', error);
@@ -200,8 +208,27 @@ export const ChatInterface = () => {
           setStreamingContent('');
           setStreamingMessageId(null);
         },
-        handleToolCall,
-        handleToolResult
+        (toolCall: ToolCall) => {
+          hasToolCalls = true;
+          handleToolCall(toolCall);
+          // Store the actual tool call for later use
+          executedTools.push({
+            toolCall: toolCall,
+            result: null,
+            error: null
+          });
+        },
+        (toolName: string, result: any, error?: string) => {
+          handleToolResult(toolName, result, error);
+          // Update the corresponding tool call with results
+          const toolIndex = executedTools.findIndex(t => 
+            t.toolCall.function.name === toolName && t.result === null && t.error === null
+          );
+          if (toolIndex >= 0) {
+            executedTools[toolIndex].result = result;
+            executedTools[toolIndex].error = error;
+          }
+        }
       );
     } catch (error) {
       console.error('Error sending message:', error);
@@ -210,6 +237,81 @@ export const ChatInterface = () => {
         description: error instanceof Error ? error.message : "Failed to get AI response",
         variant: "destructive",
       });
+      setIsLoading(false);
+      setStreamingContent('');
+      setStreamingMessageId(null);
+    }
+  };
+
+  const handleToolExecutionComplete = async (
+    originalMessages: ChatMessageType[], 
+    executedTools: any[], 
+    aiMessageId: string
+  ) => {
+    if (!openAIService || !currentThread) return;
+
+    // Create assistant message for tool calls first
+    const assistantMessage: ChatMessageType = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      toolCalls: executedTools.map(tool => tool.toolCall)
+    };
+
+    // Create tool result messages with proper format
+    const toolMessages = executedTools.map((tool, index) => ({
+      id: `tool-${Date.now()}-${index}`,
+      role: 'tool' as const,
+      content: tool.error 
+        ? `Error: ${tool.error}` 
+        : `Search results for "${JSON.parse(tool.toolCall.function.arguments).query}": ${JSON.stringify(tool.result)}`,
+      timestamp: new Date(),
+      toolCallId: tool.toolCall.id
+    }));
+
+    const messagesWithTools = [...originalMessages, assistantMessage, ...toolMessages];
+
+    // Get final response from the model with tool results
+    try {
+      let finalResponse = '';
+      setStreamingContent('');
+
+      await openAIService.sendMessageStream(
+        messagesWithTools,
+        (chunk: string) => {
+          finalResponse += chunk;
+          setStreamingContent(finalResponse);
+        },
+        () => {
+          // Final response completed
+          const aiMessage: ChatMessageType = {
+            id: aiMessageId,
+            role: 'assistant',
+            content: finalResponse,
+            timestamp: new Date(),
+          };
+
+          ThreadManager.addMessageToThread(currentSection, currentThread.id, aiMessage);
+          setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, aiMessage] } : null);
+          setIsLoading(false);
+          setStreamingContent('');
+          setStreamingMessageId(null);
+        },
+        (error: Error) => {
+          console.error('Final response error:', error);
+          toast({
+            title: "Error",
+            description: "Failed to get final response after tool execution",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          setStreamingContent('');
+          setStreamingMessageId(null);
+        }
+      );
+    } catch (error) {
+      console.error('Error getting final response:', error);
       setIsLoading(false);
       setStreamingContent('');
       setStreamingMessageId(null);
@@ -248,7 +350,7 @@ export const ChatInterface = () => {
     }
   };
 
-  const visibleMessages = currentThread?.messages.filter(m => m.role !== 'system') || [];
+  const visibleMessages = currentThread?.messages.filter(m => m.role !== 'system' && m.role !== 'tool') || [];
 
   return (
     <div className="flex h-screen bg-background">{/* Removed gradient */}

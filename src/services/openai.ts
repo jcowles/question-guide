@@ -1,9 +1,10 @@
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
   timestamp: Date;
   toolCalls?: ToolCall[];
+  toolCallId?: string;
 }
 
 export interface ToolCall {
@@ -161,7 +162,8 @@ export class OpenAIService {
           messages: messages.map(msg => ({
             role: msg.role,
             content: msg.content,
-            ...(msg.toolCalls && { tool_calls: msg.toolCalls })
+            ...(msg.toolCalls && { tool_calls: msg.toolCalls }),
+            ...(msg.toolCallId && { tool_call_id: msg.toolCallId })
           })),
           tools: this.mcpTools,
           tool_choice: "auto",
