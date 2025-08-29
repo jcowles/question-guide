@@ -103,6 +103,19 @@ export const ChatInterface = () => {
       )
     );
 
+    // Add debug message to chat if debug mode is enabled
+    if (debugMode && currentThread) {
+      const debugMessage: ChatMessageType = {
+        id: `debug-tool-${Date.now()}`,
+        role: 'system',
+        content: `🔧 **MCP Tool Result: ${toolName}**\n\`\`\`json\n${JSON.stringify({ toolName, result, error, timestamp: new Date().toISOString() }, null, 2)}\n\`\`\``,
+        timestamp: new Date(),
+      };
+      
+      ThreadManager.addMessageToThread(currentSection, currentThread.id, debugMessage);
+      setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, debugMessage] } : null);
+    }
+
     // Auto-hide status bar after 3 seconds once all tools completed
     setTimeout(() => {
       setMcpToolStatuses(prev => {
@@ -170,6 +183,32 @@ export const ChatInterface = () => {
     // Enable debug mode in service if debug is on
     if (openAIService && debugMode) {
       openAIService.setDebugMode(true);
+    }
+
+    // Add debug message with OpenAI request if debug mode is enabled
+    if (debugMode && currentThread) {
+      const debugRequestMessage: ChatMessageType = {
+        id: `debug-request-${Date.now()}`,
+        role: 'system',
+        content: `🚀 **OpenAI Request**\n\`\`\`json\n${JSON.stringify({
+          model: 'gpt-4o',
+          messages: messages.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            ...(msg.toolCalls && { tool_calls: msg.toolCalls }),
+            ...(msg.toolCallId && { tool_call_id: msg.toolCallId })
+          })),
+          tools: openAIService ? 'MCP tools enabled' : 'No tools',
+          max_tokens: 1500,
+          temperature: 0.7,
+          stream: true,
+          timestamp: new Date().toISOString()
+        }, null, 2)}\n\`\`\``,
+        timestamp: new Date(),
+      };
+      
+      ThreadManager.addMessageToThread(currentSection, currentThread.id, debugRequestMessage);
+      setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, debugRequestMessage] } : null);
     }
 
     try {
@@ -400,7 +439,14 @@ export const ChatInterface = () => {
     }
   };
 
-  const visibleMessages = currentThread?.messages.filter(m => m.role !== 'system' && m.role !== 'tool') || [];
+  const visibleMessages = currentThread?.messages.filter(m => {
+    // Hide system messages except debug messages when debug mode is on
+    if (m.role === 'system') {
+      return debugMode && m.content.includes('🔧 **MCP Tool Result') || m.content.includes('🚀 **OpenAI Request');
+    }
+    // Hide tool messages
+    return m.role !== 'tool';
+  }) || [];
 
   return (
     <div className="flex h-screen bg-background">{/* Removed gradient */}
