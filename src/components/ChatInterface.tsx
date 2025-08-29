@@ -328,6 +328,28 @@ export const ChatInterface = () => {
       return;
     }
 
+    // Wait for all tool results to complete before proceeding
+    const checkAllToolsComplete = () => {
+      return executedTools.every(tool => tool.result !== null || tool.error !== null);
+    };
+
+    // Poll until all tools have results
+    const waitForToolResults = async () => {
+      let attempts = 0;
+      const maxAttempts = 50; // 5 seconds timeout
+      
+      while (!checkAllToolsComplete() && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      
+      if (!checkAllToolsComplete()) {
+        console.warn('Timeout waiting for tool results');
+      }
+    };
+
+    await waitForToolResults();
+
     // Create assistant message for tool calls first (don't show this in UI)
     const assistantMessage: ChatMessageType = {
       id: `assistant-${Date.now()}`,
@@ -344,7 +366,7 @@ export const ChatInterface = () => {
     const toolMessages = executedTools.map((tool, index) => {
       const content = tool.error 
         ? `Error executing ${tool.toolCall.function.name}: ${tool.error}` 
-        : (tool.result ? JSON.stringify(tool.result) : 'null');
+        : (tool.result ? JSON.stringify(tool.result) : 'No result available');
       
       console.log('Creating tool message:', { 
         toolName: tool.toolCall.function.name, 
