@@ -87,7 +87,12 @@ export const ChatMessage = ({ message, isTyping = false, streamingContent, toolR
             <Collapsible open={isToolResultsOpen} onOpenChange={setIsToolResultsOpen}>
               <CollapsibleTrigger className="flex items-center text-xs text-muted-foreground hover:text-foreground transition-colors">
                 <ChevronDown className={`h-3 w-3 mr-1 transition-transform ${isToolResultsOpen ? 'rotate-180' : ''}`} />
-                MCP Tool Results ({toolResults?.length})
+                {toolResults && toolResults.length === 1 
+                  ? `${toolResults[0].toolName} result`
+                  : toolResults && toolResults.length > 1
+                  ? `${toolResults.length} tool results: ${toolResults.map(t => t.toolName).join(', ')}`
+                  : `MCP Tool Results (${toolResults?.length})`
+                }
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="mt-2 p-3 bg-muted/30 rounded-lg border border-muted">
