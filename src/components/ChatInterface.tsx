@@ -23,6 +23,8 @@ export const ChatInterface = () => {
   const [sidebarUpdateTrigger, setSidebarUpdateTrigger] = useState(0);
   const [mcpToolStatuses, setMcpToolStatuses] = useState<MCPToolStatus[]>([]);
   const [completedToolResults, setCompletedToolResults] = useState<MCPToolStatus[]>([]);
+  const [messageToolResults, setMessageToolResults] = useState<Record<string, MCPToolStatus[]>>({});
+  const [currentSessionToolResults, setCurrentSessionToolResults] = useState<MCPToolStatus[]>([]);
   const [showMcpStatus, setShowMcpStatus] = useState(false);
   const [debugMode, setDebugMode] = useState(false); // Debug toggle
   const [debugRequestAdded, setDebugRequestAdded] = useState<string | null>(null); // Track debug request
@@ -108,8 +110,8 @@ export const ChatInterface = () => {
       )
     );
     
-    // Add to persistent completed results for collapsible UI
-    setCompletedToolResults(prev => [...prev, completedStatus]);
+    // Add to current session's tool results
+    setCurrentSessionToolResults(prev => [...prev, completedStatus]);
 
     // Add debug message to chat if debug mode is enabled
     if (debugMode && currentThread) {
@@ -144,6 +146,11 @@ export const ChatInterface = () => {
       setShowApiDialog(true);
       return;
     }
+
+    // Clear current session tool results when starting a new message
+    setCurrentSessionToolResults([]);
+    setMcpToolStatuses([]);
+    setShowMcpStatus(false);
 
     const userMessage: ChatMessageType = {
       id: Date.now().toString(),
@@ -251,6 +258,15 @@ export const ChatInterface = () => {
 
             ThreadManager.addMessageToThread(currentSection, currentThread.id, aiMessage);
             setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, aiMessage] } : null);
+            
+            // Associate current session tool results with this message (if any)
+            if (currentSessionToolResults.length > 0) {
+              setMessageToolResults(prev => ({ 
+                ...prev, 
+                [aiMessage.id]: [...currentSessionToolResults] 
+              }));
+            }
+            
             setIsLoading(false);
             setStreamingContent('');
             setStreamingMessageId(null);
@@ -434,6 +450,15 @@ export const ChatInterface = () => {
             ...prev, 
             messages: [...prev.messages, assistantMessage, ...toolMessages, aiMessage] 
           } : null);
+          
+          // Associate current session tool results with this message
+          if (currentSessionToolResults.length > 0) {
+            setMessageToolResults(prev => ({ 
+              ...prev, 
+              [aiMessage.id]: [...currentSessionToolResults] 
+            }));
+          }
+          
           setIsLoading(false);
           setStreamingContent('');
           setStreamingMessageId(null);
@@ -562,15 +587,9 @@ export const ChatInterface = () => {
           )}
           
           {visibleMessages.map((message, index) => {
-            // For AI messages, find associated tool results
-            // Only show completed tool results and only for the most recent AI message
-            const isLastAssistantMessage = message.role === 'assistant' && 
-              index === visibleMessages.map((m, i) => ({ msg: m, index: i }))
-                .filter(({ msg }) => msg.role === 'assistant')
-                .pop()?.index;
-            
-            const associatedToolResults = isLastAssistantMessage && completedToolResults.length > 0 
-              ? completedToolResults.slice(-5) // Show last 5 tool results for the most recent AI message
+            // Get tool results specific to this message
+            const associatedToolResults = message.role === 'assistant' && messageToolResults[message.id] 
+              ? messageToolResults[message.id]
               : [];
             
             return (
@@ -616,7 +635,7 @@ export const ChatInterface = () => {
                 timestamp: new Date(),
               }}
               streamingContent={streamingContent}
-              toolResults={completedToolResults.slice(-5)}
+              toolResults={currentSessionToolResults}
             />
           )}
           
