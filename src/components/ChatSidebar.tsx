@@ -21,6 +21,7 @@ interface ChatSidebarProps {
   onThreadSelect: (threadId: string) => void;
   onNewThread: () => void;
   onSettingsClick: () => void;
+  onThreadsUpdate?: () => void;
 }
 
 export const ChatSidebar = ({ 
@@ -29,14 +30,25 @@ export const ChatSidebar = ({
   onSectionChange, 
   onThreadSelect, 
   onNewThread,
-  onSettingsClick 
+  onSettingsClick,
+  onThreadsUpdate 
 }: ChatSidebarProps) => {
   const [threads, setThreads] = useState(() => ThreadManager.getAllThreads());
+
+  // Update threads when external update occurs
+  const updateThreads = () => {
+    setThreads(ThreadManager.getAllThreads());
+  };
+
+  // Call onThreadsUpdate callback to notify parent
+  if (onThreadsUpdate) {
+    onThreadsUpdate = updateThreads;
+  }
 
   const handleDeleteThread = (threadId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     ThreadManager.deleteThread(currentSection, threadId);
-    setThreads(ThreadManager.getAllThreads());
+    updateThreads();
     
     if (currentThreadId === threadId) {
       const remainingThreads = ThreadManager.getThreadsBySection(currentSection);

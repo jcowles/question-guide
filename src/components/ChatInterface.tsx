@@ -19,6 +19,7 @@ export const ChatInterface = () => {
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [openAIService, setOpenAIService] = useState<OpenAIService | null>(null);
   const [showApiDialog, setShowApiDialog] = useState(false);
+  const [sidebarUpdateTrigger, setSidebarUpdateTrigger] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -104,6 +105,9 @@ export const ChatInterface = () => {
     
     // Update local state
     setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, userMessage] } : null);
+    
+    // Trigger sidebar update
+    setSidebarUpdateTrigger(prev => prev + 1);
 
     // Generate thread name from first user message if needed
     if (currentThread.name.startsWith('Chat ')) {
@@ -190,8 +194,8 @@ export const ChatInterface = () => {
     }
   };
 
-  const getSectionIcon = (section: ChatSection, size: 'small' | 'large') => {
-    const iconSize = size === 'small' ? 'w-5 h-5' : 'w-8 h-8';
+  const getSectionIcon = (section: ChatSection, size: 'small' | 'medium' | 'large') => {
+    const iconSize = size === 'small' ? 'w-5 h-5' : size === 'medium' ? 'w-7 h-7' : 'w-8 h-8';
     switch (section) {
       case 'steam':
         return <img src={steamLogo} alt="Steam" className={iconSize} />;
@@ -211,6 +215,7 @@ export const ChatInterface = () => {
         onThreadSelect={handleThreadSelect}
         onNewThread={handleNewThread}
         onSettingsClick={handleSettingsClick}
+        key={sidebarUpdateTrigger}
       />
 
       <div className="flex-1 flex flex-col">
@@ -218,7 +223,7 @@ export const ChatInterface = () => {
         <div className="flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 flex items-center justify-center">
-              {getSectionIcon(currentSection, 'small')}
+              {getSectionIcon(currentSection, 'medium')}
             </div>
             <div>
               <h1 className="text-xl font-semibold">{getSectionTitle(currentSection)}</h1>
