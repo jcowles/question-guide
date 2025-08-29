@@ -543,6 +543,12 @@ export const ChatInterface = () => {
            };
 
           console.log('💾 Adding final AI message to thread:', aiMessage);
+          console.log('🔍 DEBUG: Before association check:', {
+            currentSessionToolResultsLength: currentSessionToolResults.length,
+            currentSessionToolResults: currentSessionToolResults.map(r => ({ toolName: r.toolName, hasResult: !!r.result })),
+            aiMessageId: aiMessage.id
+          });
+          
           ThreadManager.addMessageToThread(currentSection, currentThread.id, aiMessage);
           setCurrentThread(prev => prev ? { 
             ...prev, 
