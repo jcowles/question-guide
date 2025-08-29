@@ -157,6 +157,9 @@ export class MCPClient {
   private async discoverTools(): Promise<void> {
     const response = await this.makeRequest('tools/list', {});
     this.tools = response.result?.tools || [];
+    
+    // Debug: Log the actual tool definitions received from MCP server
+    console.log('MCP Tools received:', JSON.stringify(this.tools, null, 2));
   }
 
   async getTools(): Promise<MCPTool[]> {
