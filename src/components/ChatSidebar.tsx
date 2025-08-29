@@ -112,7 +112,7 @@ export const ChatSidebar = ({
               }`}
               onClick={() => {
                 onSectionChange(section);
-                onNewThread(); // Create new chat when clicking assistant button
+                // Don't auto-create new thread - let user create one by sending first message
               }}
             >
               {getSectionIcon(section)}
