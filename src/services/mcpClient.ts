@@ -220,7 +220,7 @@ export class MCPClient {
     const requestId = this.requestId++;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Accept': 'application/json'
+      'Accept': 'application/json, text/event-stream'
     };
 
     if (this.session) {
