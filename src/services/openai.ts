@@ -108,6 +108,7 @@ export class OpenAIService {
       // Track accumulating tool calls
       const accumulatingToolCalls = new Map<number, Partial<ToolCall>>();
       
+      const mcpToolsData = await this.getMCPTools();
       const requestBody = {
         model: 'gpt-4o',
         messages: messages.map(msg => {
@@ -128,11 +129,18 @@ export class OpenAIService {
           
           return baseMessage;
         }),
-        ...(await this.getMCPTools()),
+        ...mcpToolsData,
         max_tokens: 1500,
         temperature: 0.7,
         stream: true,
       };
+
+      console.log('🔧 OpenAI request body:', {
+        model: requestBody.model,
+        messageCount: requestBody.messages.length,
+        hasTools: !!requestBody.tools,
+        toolCount: requestBody.tools?.length || 0
+      });
 
       // Debug logging
       if (this.debugMode) {
@@ -263,11 +271,14 @@ export class OpenAIService {
 
   private async getMCPTools(): Promise<{ tools?: any[], tool_choice?: string }> {
     if (!this.mcpClient?.isConnected()) {
+      console.log('🔧 MCP client not connected, no tools available');
       return {};
     }
 
     try {
       const mcpTools = await this.mcpClient.getTools();
+      console.log('🔧 Got MCP tools for OpenAI:', mcpTools.length);
+      
       const tools = mcpTools.map((tool: any) => ({
         type: "function",
         function: {
@@ -277,7 +288,9 @@ export class OpenAIService {
         }
       }));
 
-      return tools.length > 0 ? { tools, tool_choice: "auto" } : {};
+      const result = tools.length > 0 ? { tools, tool_choice: "auto" } : {};
+      console.log('🔧 Formatted tools for OpenAI:', { toolCount: tools.length, hasTools: !!result.tools });
+      return result;
     } catch (error) {
       console.error('Failed to get MCP tools:', error);
       return {};
