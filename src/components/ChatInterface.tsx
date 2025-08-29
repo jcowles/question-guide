@@ -192,7 +192,7 @@ export const ChatInterface = () => {
   const visibleMessages = currentThread?.messages.filter(m => m.role !== 'system') || [];
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-background to-background-secondary">
+    <div className="flex h-screen bg-background">{/* Removed gradient */}
       <ChatSidebar
         currentSection={currentSection}
         currentThreadId={currentThreadId}

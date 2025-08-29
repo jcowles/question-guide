@@ -54,7 +54,7 @@ export default {
 					foreground: 'hsl(var(--card-foreground))'
 				},
 				chat: {
-					'user-bg': 'var(--chat-user-bg)',
+					'user-bg': 'hsl(var(--chat-user-bg))',
 					'ai-bg': 'hsl(var(--chat-ai-bg))',
 					'input-bg': 'hsl(var(--chat-input-bg))'
 				},

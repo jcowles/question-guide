@@ -66,15 +66,6 @@ export const ChatSidebar = ({
     }
   };
 
-  const getSectionColor = (section: ChatSection) => {
-    switch (section) {
-      case 'steam':
-        return 'from-blue-500 to-blue-600';
-      case 'source2':
-        return 'from-orange-500 to-orange-600';
-    }
-  };
-
   const currentThreads = threads[currentSection] || [];
 
   return (
@@ -94,11 +85,11 @@ export const ChatSidebar = ({
             <Button
               key={section}
               variant={currentSection === section ? "default" : "ghost"}
-              className={`w-full justify-start gap-2 ${
-                currentSection === section 
-                  ? `bg-gradient-to-r ${getSectionColor(section)} text-white hover:opacity-90` 
-                  : ''
-              }`}
+          className={`w-full justify-start gap-2 ${
+            currentSection === section 
+              ? `bg-primary text-primary-foreground hover:bg-primary/90` 
+              : ''
+          }`}
               onClick={() => onSectionChange(section)}
             >
               {getSectionIcon(section)}

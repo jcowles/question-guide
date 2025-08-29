@@ -2,53 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
-/* AI Chat Design System - Modern gradients and beautiful colors */
+/* AI Chat Design System - Clean flat colors */
 
 @layer base {
   :root {
-    /* Main background with subtle gradient */
-    --background: 220 20% 97%;
-    --background-secondary: 215 25% 94%;
-    --foreground: 222 25% 15%;
+    /* Clean flat backgrounds */
+    --background: 255 255 255;
+    --background-secondary: 248 250 252;
+    --foreground: 15 23 42;
 
-    /* Chat specific colors */
-    --chat-bg: linear-gradient(135deg, hsl(220, 20%, 97%) 0%, hsl(215, 25%, 94%) 100%);
-    --chat-user-bg: linear-gradient(135deg, hsl(262, 83%, 58%) 0%, hsl(237, 100%, 70%) 100%);
-    --chat-ai-bg: 0 0% 100%;
-    --chat-input-bg: 0 0% 100%;
+    /* Chat specific colors - flat */
+    --chat-user-bg: 99 102 241;
+    --chat-ai-bg: 255 255 255;
+    --chat-input-bg: 255 255 255;
     
     /* Enhanced color system */
-    --primary: 262 83% 58%;
-    --primary-glow: 237 100% 70%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 99 102 241;
+    --primary-foreground: 255 255 255;
 
-    --secondary: 215 25% 94%;
-    --secondary-foreground: 222 25% 15%;
+    --secondary: 248 250 252;
+    --secondary-foreground: 15 23 42;
 
-    --muted: 215 20% 92%;
-    --muted-foreground: 215 15% 55%;
+    --muted: 241 245 249;
+    --muted-foreground: 100 116 139;
 
-    --accent: 262 50% 96%;
-    --accent-foreground: 262 83% 58%;
+    --accent: 238 242 255;
+    --accent-foreground: 99 102 241;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 239 68 68;
+    --destructive-foreground: 255 255 255;
 
-    --border: 215 20% 88%;
-    --input: 0 0% 100%;
-    --ring: 262 83% 58%;
+    --border: 226 232 240;
+    --input: 255 255 255;
+    --ring: 99 102 241;
 
     --radius: 1rem;
-
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(262, 83%, 58%) 0%, hsl(237, 100%, 70%) 100%);
-    --gradient-subtle: linear-gradient(180deg, hsl(220, 20%, 97%) 0%, hsl(215, 25%, 94%) 100%);
-    --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
 
     /* Shadows */
     --shadow-soft: 0 4px 20px -4px rgba(0, 0, 0, 0.1);
     --shadow-message: 0 2px 10px -2px rgba(0, 0, 0, 0.08);
-    --shadow-glow: 0 0 30px rgba(138, 43, 226, 0.2);
+    --shadow-glow: 0 0 30px rgba(99, 102, 241, 0.2);
 
     /* Animations */
     --animation-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -72,35 +65,33 @@
   }
 
   .dark {
-    /* Enhanced dark mode for AI chat */
-    --background: 222 20% 8%;
-    --background-secondary: 215 25% 6%;
-    --foreground: 220 15% 95%;
+    /* Clean dark mode colors */
+    --background: 15 23 42;
+    --background-secondary: 30 41 59;
+    --foreground: 248 250 252;
 
-    --chat-bg: linear-gradient(135deg, hsl(222, 20%, 8%) 0%, hsl(215, 25%, 6%) 100%);
-    --chat-user-bg: linear-gradient(135deg, hsl(262, 83%, 58%) 0%, hsl(237, 100%, 70%) 100%);
-    --chat-ai-bg: 222 20% 12%;
-    --chat-input-bg: 222 20% 12%;
+    --chat-user-bg: 79 70 229;
+    --chat-ai-bg: 30 41 59;
+    --chat-input-bg: 30 41 59;
 
-    --primary: 237 100% 70%;
-    --primary-glow: 262 83% 58%;
-    --primary-foreground: 222 20% 8%;
+    --primary: 129 140 248;
+    --primary-foreground: 15 23 42;
 
-    --secondary: 217 32% 17%;
-    --secondary-foreground: 220 15% 95%;
+    --secondary: 51 65 85;
+    --secondary-foreground: 248 250 252;
 
-    --muted: 217 32% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 51 65 85;
+    --muted-foreground: 148 163 184;
 
-    --accent: 217 32% 17%;
-    --accent-foreground: 220 15% 95%;
+    --accent: 51 65 85;
+    --accent-foreground: 248 250 252;
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 220 15% 95%;
+    --destructive: 239 68 68;
+    --destructive-foreground: 248 250 252;
 
-    --border: 217 32% 17%;
-    --input: 222 20% 12%;
-    --ring: 237 100% 70%;
+    --border: 51 65 85;
+    --input: 30 41 59;
+    --ring: 129 140 248;
   }
 }
 
@@ -111,7 +102,6 @@
 
   body {
     @apply bg-background text-foreground;
-    background: var(--gradient-subtle);
     min-height: 100vh;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
@@ -119,11 +109,12 @@
 
 @layer components {
   .chat-container {
-    background: var(--gradient-subtle);
+    @apply bg-background;
   }
   
   .message-user {
-    background: var(--gradient-primary);
+    background: hsl(var(--chat-user-bg));
+    color: hsl(var(--primary-foreground));
     box-shadow: var(--shadow-message);
   }
   
