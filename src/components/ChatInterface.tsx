@@ -67,12 +67,14 @@ export const ChatInterface = () => {
   }, [currentThread?.messages, isLoading, streamingContent]);
 
   useEffect(() => {
-    // Load or create initial thread when section changes
+    // Load existing thread when section changes, but don't auto-create empty ones
     const threads = ThreadManager.getThreadsBySection(currentSection);
     if (threads.length > 0) {
       handleThreadSelect(threads[0].id);
     } else {
-      handleNewThread();
+      // Don't auto-create empty threads - let user create one by sending first message
+      setCurrentThread(null);
+      setCurrentThreadId('');
     }
   }, [currentSection]);
 
@@ -199,9 +201,19 @@ export const ChatInterface = () => {
   };
 
   const handleSendMessage = async (content: string) => {
-    if (!openAIService || !currentThread) {
+    if (!openAIService) {
       setShowApiDialog(true);
       return;
+    }
+
+    // Create a new thread if we don't have one (lazy creation)
+    let workingThread = currentThread;
+    if (!workingThread) {
+      workingThread = ThreadManager.createThread(currentSection);
+      setCurrentThreadId(workingThread.id);
+      setCurrentThread(workingThread);
+      // Trigger sidebar update to show the new thread
+      setSidebarUpdateTrigger(prev => prev + 1);
     }
 
     // Don't clear current session tool results here - let them be cleared after association
@@ -216,7 +228,7 @@ export const ChatInterface = () => {
     };
 
     // Add system message if this is the first user message
-    const messages = [...currentThread.messages];
+    const messages = [...workingThread.messages];
     if (messages.filter(m => m.role !== 'system').length === 0) {
       const systemMessage: ChatMessageType = {
         id: `system-${Date.now()}`,
@@ -225,7 +237,7 @@ export const ChatInterface = () => {
         timestamp: new Date(),
       };
       messages.push(systemMessage);
-      ThreadManager.addMessageToThread(currentSection, currentThread.id, systemMessage);
+      ThreadManager.addMessageToThread(currentSection, workingThread.id, systemMessage);
       
       // Update local state immediately with system message
       setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, systemMessage] } : null);
@@ -233,7 +245,7 @@ export const ChatInterface = () => {
 
     // Add user message
     messages.push(userMessage);
-    ThreadManager.addMessageToThread(currentSection, currentThread.id, userMessage);
+    ThreadManager.addMessageToThread(currentSection, workingThread.id, userMessage);
     
     // Update local state with user message
     setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, userMessage] } : null);
@@ -242,9 +254,9 @@ export const ChatInterface = () => {
     setSidebarUpdateTrigger(prev => prev + 1);
 
     // Generate thread name from first user message if needed
-    if (currentThread.name.startsWith('Chat ')) {
+    if (workingThread.name.startsWith('Chat ')) {
       const threadName = content.slice(0, 30) + (content.length > 30 ? '...' : '');
-      ThreadManager.updateThread(currentSection, currentThread.id, { name: threadName });
+      ThreadManager.updateThread(currentSection, workingThread.id, { name: threadName });
       setCurrentThread(prev => prev ? { ...prev, name: threadName } : null);
     }
 
@@ -274,7 +286,7 @@ export const ChatInterface = () => {
     }
 
     // Add debug message with OpenAI request if debug mode is enabled
-    if (debugMode && currentThread) {
+    if (debugMode && workingThread) {
       const debugRequestId = `debug-request-${Date.now()}`;
       
       // Prevent duplicate debug request messages
@@ -301,7 +313,7 @@ export const ChatInterface = () => {
           timestamp: new Date(),
         };
         
-        ThreadManager.addMessageToThread(currentSection, currentThread.id, debugRequestMessage);
+        ThreadManager.addMessageToThread(currentSection, workingThread.id, debugRequestMessage);
         setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, debugRequestMessage] } : null);
       }
     }
@@ -328,7 +340,7 @@ export const ChatInterface = () => {
               timestamp: new Date(),
             };
 
-            ThreadManager.addMessageToThread(currentSection, currentThread.id, aiMessage);
+            ThreadManager.addMessageToThread(currentSection, workingThread.id, aiMessage);
             setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, aiMessage] } : null);
             
              // Associate current session tool results with this message (if any)
