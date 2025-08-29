@@ -108,34 +108,48 @@ export class MCPClient {
 
     const url = new URL(this.config.baseUrl);
     
-    this.sseConnection = new EventSource(url.toString(), {
-      // Note: EventSource doesn't support custom headers, so we'll use query params
-      // This is a limitation we'll need to handle server-side
-    });
+    try {
+      this.sseConnection = new EventSource(url.toString());
 
-    this.sseConnection.addEventListener('jsonrpc', (event) => {
-      try {
-        const notification = JSON.parse(event.data);
-        this.handleNotification(notification);
-      } catch (error) {
-        console.error('Failed to parse SSE notification:', error);
-      }
-    });
+      this.sseConnection.addEventListener('jsonrpc', (event) => {
+        try {
+          const notification = JSON.parse(event.data);
+          this.handleNotification(notification);
+        } catch (error) {
+          console.error('Failed to parse SSE notification:', error);
+        }
+      });
 
-    this.sseConnection.onerror = (error) => {
-      console.error('SSE connection error:', error);
-    };
-
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('SSE connection timeout'));
-      }, 5000);
-
-      this.sseConnection!.onopen = () => {
-        clearTimeout(timeout);
-        resolve();
+      this.sseConnection.onerror = (error) => {
+        console.warn('SSE connection error (this is expected with some MCP servers):', error);
+        // Don't treat SSE errors as fatal - many MCP servers have HTTP/2 protocol issues
+        // The main functionality still works through regular HTTP requests
       };
-    });
+
+      return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          console.log('SSE connection timeout - continuing without real-time updates');
+          resolve(); // Don't reject, just continue
+        }, 3000);
+
+        this.sseConnection!.onopen = () => {
+          console.log('SSE connection established successfully');
+          clearTimeout(timeout);
+          resolve();
+        };
+
+        // If connection fails, still resolve after a short delay
+        this.sseConnection!.onerror = () => {
+          setTimeout(() => {
+            clearTimeout(timeout);
+            resolve();
+          }, 1000);
+        };
+      });
+    } catch (error) {
+      console.warn('Failed to establish SSE connection:', error);
+      // Continue without SSE - the main MCP functionality works via HTTP
+    }
   }
 
   private handleNotification(notification: any): void {
