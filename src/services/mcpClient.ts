@@ -267,7 +267,24 @@ export class MCPClient {
       throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
     }
 
-    const data = await response.json();
+    // Handle SSE response format
+    const responseText = await response.text();
+    let data;
+    
+    if (responseText.startsWith('event: message')) {
+      // Parse SSE format
+      const lines = responseText.split('\n');
+      const dataLine = lines.find(line => line.startsWith('data: '));
+      if (dataLine) {
+        const jsonStr = dataLine.substring(6); // Remove 'data: ' prefix
+        data = JSON.parse(jsonStr);
+      } else {
+        throw new Error('No data found in SSE response');
+      }
+    } else {
+      // Parse regular JSON
+      data = JSON.parse(responseText);
+    }
 
     if (data.error) {
       throw new Error(`JSON-RPC Error ${data.error.code}: ${data.error.message}`);
