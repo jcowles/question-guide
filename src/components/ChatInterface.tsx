@@ -32,6 +32,55 @@ export const ChatInterface = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // Function to generate a concise thread title using LLM
+  const generateThreadTitle = async (userMessage: string, section: ChatSection, threadId: string) => {
+    if (!openAIService) return;
+    
+    try {
+      // Create a simple prompt for title generation
+      const titlePrompt = `Generate a short, concise title (4-6 words max) for a conversation that starts with: "${userMessage}"
+
+The title should be descriptive and capture the main topic. Return only the title, nothing else.`;
+
+      // Use gpt-5-mini for fast, efficient summarization
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OpenAIService.getApiKey()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-5-mini-2025-08-07',
+          messages: [
+            { role: 'user', content: titlePrompt }
+          ],
+          max_tokens: 20,
+          temperature: 0.3,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const generatedTitle = data.choices[0]?.message?.content?.trim();
+        
+        if (generatedTitle && generatedTitle !== userMessage) {
+          // Update thread name in storage and local state
+          ThreadManager.updateThread(section, threadId, { name: generatedTitle });
+          setCurrentThread(prev => prev ? { ...prev, name: generatedTitle } : null);
+          // Trigger sidebar update to show new title
+          setSidebarUpdateTrigger(prev => prev + 1);
+        }
+      }
+    } catch (error) {
+      console.log('Failed to generate thread title:', error);
+      // Fallback to truncated user message if LLM fails
+      const fallbackTitle = userMessage.slice(0, 30) + (userMessage.length > 30 ? '...' : '');
+      ThreadManager.updateThread(section, threadId, { name: fallbackTitle });
+      setCurrentThread(prev => prev ? { ...prev, name: fallbackTitle } : null);
+      setSidebarUpdateTrigger(prev => prev + 1);
+    }
+  };
+
   useEffect(() => {
     const apiKey = OpenAIService.getApiKey();
     if (apiKey) {
@@ -237,10 +286,9 @@ export const ChatInterface = () => {
     setSidebarUpdateTrigger(prev => prev + 1);
 
     // Generate thread name from first user message if needed
-    if (workingThread.name.startsWith('Chat ')) {
-      const threadName = content.slice(0, 30) + (content.length > 30 ? '...' : '');
-      ThreadManager.updateThread(currentSection, workingThread.id, { name: threadName });
-      setCurrentThread(prev => prev ? { ...prev, name: threadName } : null);
+    if (workingThread.name === 'New Chat') {
+      // Use LLM to generate a concise title for the conversation
+      generateThreadTitle(content, currentSection, workingThread.id);
     }
 
     setIsLoading(true);
