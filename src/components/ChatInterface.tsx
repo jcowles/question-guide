@@ -554,15 +554,26 @@ export const ChatInterface = () => {
             </div>
           )}
           
-          {visibleMessages.map((message) => {
+          {visibleMessages.map((message, index) => {
             // For AI messages, find associated tool results
-            const associatedToolResults = message.role === 'assistant' && mcpToolStatuses.length > 0 
-              ? mcpToolStatuses.filter(status => {
-                  // Simple heuristic: associate tool results with the most recent AI message
-                  // In a more sophisticated implementation, you'd track which message triggered which tools
-                  return true;
-                })
+            // Only show completed tool results and only for the most recent AI message
+            const isLastAssistantMessage = message.role === 'assistant' && 
+              index === visibleMessages.map((m, i) => ({ msg: m, index: i }))
+                .filter(({ msg }) => msg.role === 'assistant')
+                .pop()?.index;
+            
+            const associatedToolResults = isLastAssistantMessage && mcpToolStatuses.length > 0 
+              ? mcpToolStatuses.filter(status => status.status === 'success' || status.status === 'error')
               : [];
+            
+            console.log('Message association debug:', {
+              messageId: message.id,
+              messageRole: message.role,
+              isLastAssistantMessage,
+              mcpToolStatusesCount: mcpToolStatuses.length,
+              mcpToolStatuses: mcpToolStatuses,
+              associatedToolResultsCount: associatedToolResults.length
+            });
             
             return (
               <ChatMessage 
