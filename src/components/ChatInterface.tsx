@@ -165,8 +165,7 @@ export const ChatInterface = () => {
       return;
     }
 
-    // Clear current session tool results when starting a new message
-    setCurrentSessionToolResults([]);
+    // Don't clear current session tool results here - let them be cleared after association
     setMcpToolStatuses([]);
     setShowMcpStatus(false);
 
@@ -280,13 +279,15 @@ export const ChatInterface = () => {
             ThreadManager.addMessageToThread(currentSection, currentThread.id, aiMessage);
             setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, aiMessage] } : null);
             
-            // Associate current session tool results with this message (if any)
-            if (currentSessionToolResults.length > 0) {
-              setMessageToolResults(prev => ({ 
-                ...prev, 
-                [aiMessage.id]: [...currentSessionToolResults] 
-              }));
-            }
+             // Associate current session tool results with this message (if any)
+             if (currentSessionToolResults.length > 0) {
+               setMessageToolResults(prev => ({ 
+                 ...prev, 
+                 [aiMessage.id]: [...currentSessionToolResults] 
+               }));
+               // Clear session results AFTER association
+               setCurrentSessionToolResults([]);
+             }
             
             setIsLoading(false);
             setStreamingContent('');
@@ -504,13 +505,15 @@ export const ChatInterface = () => {
             messages: [...prev.messages, aiMessage] 
           } : null);
           
-          // Associate current session tool results with this message
-          if (currentSessionToolResults.length > 0) {
-            setMessageToolResults(prev => ({ 
-              ...prev, 
-              [aiMessage.id]: [...currentSessionToolResults] 
-            }));
-          }
+           // Associate current session tool results with this message
+           if (currentSessionToolResults.length > 0) {
+             setMessageToolResults(prev => ({ 
+               ...prev, 
+               [aiMessage.id]: [...currentSessionToolResults] 
+             }));
+             // Clear session results AFTER association
+             setCurrentSessionToolResults([]);
+           }
           
           setIsLoading(false);
           setStreamingContent('');
