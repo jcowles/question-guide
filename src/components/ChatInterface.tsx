@@ -6,8 +6,9 @@ import { ApiKeyDialog } from './ApiKeyDialog';
 import { OpenAIService, ChatMessage as ChatMessageType, ChatSection, SYSTEM_MESSAGES, ChatThread } from '@/services/openai';
 import { ThreadManager } from '@/services/threadManager';
 import { Button } from '@/components/ui/button';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Gamepad2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import steamLogo from '@/assets/steam-logo.png';
 
 export const ChatInterface = () => {
   const [currentSection, setCurrentSection] = useState<ChatSection>('steam');
@@ -189,6 +190,16 @@ export const ChatInterface = () => {
     }
   };
 
+  const getSectionIcon = (section: ChatSection, size: 'small' | 'large') => {
+    const iconSize = size === 'small' ? 'w-5 h-5' : 'w-8 h-8';
+    switch (section) {
+      case 'steam':
+        return <img src={steamLogo} alt="Steam" className={iconSize} />;
+      case 'source2':
+        return <Gamepad2 className={iconSize} />;
+    }
+  };
+
   const visibleMessages = currentThread?.messages.filter(m => m.role !== 'system') || [];
 
   return (
@@ -206,8 +217,8 @@ export const ChatInterface = () => {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl message-user flex items-center justify-center">
-              <MessageSquare className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 flex items-center justify-center">
+              {getSectionIcon(currentSection, 'small')}
             </div>
             <div>
               <h1 className="text-xl font-semibold">{getSectionTitle(currentSection)}</h1>
@@ -220,8 +231,8 @@ export const ChatInterface = () => {
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {visibleMessages.length === 0 && !streamingContent && (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-              <div className="w-16 h-16 rounded-2xl message-user flex items-center justify-center">
-                <MessageSquare className="w-8 h-8 text-white" />
+              <div className="w-16 h-16 flex items-center justify-center">
+                {getSectionIcon(currentSection, 'large')}
               </div>
               <div>
                 <h2 className="text-xl font-semibold mb-2">Welcome to {getSectionTitle(currentSection)}!</h2>
