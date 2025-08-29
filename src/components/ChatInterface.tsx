@@ -440,9 +440,9 @@ export const ChatInterface = () => {
   };
 
   const visibleMessages = currentThread?.messages.filter(m => {
-    // Hide system messages except debug messages when debug mode is on
+    // Hide system messages except debug messages (show debug messages once added, regardless of current debug mode)
     if (m.role === 'system') {
-      return debugMode && m.content.includes('🔧 **MCP Tool Result') || m.content.includes('🚀 **OpenAI Request');
+      return m.content.includes('🔧 **MCP Tool Result') || m.content.includes('🚀 **OpenAI Request');
     }
     // Hide tool messages
     return m.role !== 'tool';
