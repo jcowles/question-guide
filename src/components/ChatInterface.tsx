@@ -25,27 +25,6 @@ export const ChatInterface = () => {
   const [completedToolResults, setCompletedToolResults] = useState<MCPToolStatus[]>([]);
   const [messageToolResults, setMessageToolResults] = useState<Record<string, MCPToolStatus[]>>({});
   const [currentSessionToolResults, setCurrentSessionToolResults] = useState<MCPToolStatus[]>([]);
-
-  // Wrap setCurrentSessionToolResults to add logging
-  const loggedSetCurrentSessionToolResults = (newValue: MCPToolStatus[] | ((prev: MCPToolStatus[]) => MCPToolStatus[])) => {
-    if (typeof newValue === 'function') {
-      setCurrentSessionToolResults(prev => {
-        const result = newValue(prev);
-        console.log('🚨 setCurrentSessionToolResults FUNCTION CALL:', {
-          previousLength: prev.length,
-          newLength: result.length,
-          fullStackTrace: new Error().stack
-        });
-        return result;
-      });
-    } else {
-      console.log('🚨 setCurrentSessionToolResults DIRECT CALL:', {
-        newLength: newValue.length,
-        fullStackTrace: new Error().stack
-      });
-      setCurrentSessionToolResults(newValue);
-    }
-  };
   const [showMcpStatus, setShowMcpStatus] = useState(false);
   const [debugMode, setDebugMode] = useState(false); // Debug toggle
   const [debugRequestAdded, setDebugRequestAdded] = useState<string | null>(null); // Track debug request
@@ -70,7 +49,11 @@ export const ChatInterface = () => {
     // Load existing thread when section changes, but don't auto-create empty ones
     const threads = ThreadManager.getThreadsBySection(currentSection);
     if (threads.length > 0) {
-      handleThreadSelect(threads[0].id);
+      // Only select the first thread if we don't already have a current thread 
+      // This prevents re-selecting when switching back to a section
+      if (!currentThread || currentThread.id !== threads[0].id) {
+        handleThreadSelect(threads[0].id);
+      }
     } else {
       // Don't auto-create empty threads - let user create one by sending first message
       setCurrentThread(null);
@@ -90,7 +73,7 @@ export const ChatInterface = () => {
   const handleSectionChange = (section: ChatSection) => {
     setCurrentSection(section);
     // Only clear transient tool states, not the message associations
-    loggedSetCurrentSessionToolResults([]);
+    setCurrentSessionToolResults([]);
     setMcpToolStatuses([]);
     setShowMcpStatus(false);
   };
@@ -101,7 +84,7 @@ export const ChatInterface = () => {
       setCurrentThreadId(threadId);
       setCurrentThread(thread);
       // Only clear transient tool states, not the message associations
-      loggedSetCurrentSessionToolResults([]);
+      setCurrentSessionToolResults([]);
       setMcpToolStatuses([]);
       setShowMcpStatus(false);
     }
@@ -112,7 +95,7 @@ export const ChatInterface = () => {
     setCurrentThreadId(newThread.id);
     setCurrentThread(newThread);
     // Only clear transient tool states for new threads
-    loggedSetCurrentSessionToolResults([]);
+    setCurrentSessionToolResults([]);
     setMcpToolStatuses([]);
     setShowMcpStatus(false);
   };
@@ -161,7 +144,7 @@ export const ChatInterface = () => {
     );
     
     // Add to current session's tool results
-    loggedSetCurrentSessionToolResults(prev => {
+    setCurrentSessionToolResults(prev => {
       const newResults = [...prev, completedStatus];
       console.log('🔧 UPDATED currentSessionToolResults:', {
         previous: prev.length,
@@ -362,9 +345,9 @@ export const ChatInterface = () => {
                  ...prev, 
                  [aiMessage.id]: [...currentSessionToolResults] 
                }));
-                // Clear session results AFTER association
-                loggedSetCurrentSessionToolResults([]);
-              }
+                 // Clear session results AFTER association
+                 setCurrentSessionToolResults([]);
+               }
             
             setIsLoading(false);
             setStreamingContent('');
@@ -639,9 +622,9 @@ export const ChatInterface = () => {
                ...prev, 
                [aiMessage.id]: [...toolResultsForAssociation] 
              }));
-             // Clear session results AFTER association
-             loggedSetCurrentSessionToolResults([]);
-           }
+              // Clear session results AFTER association
+              setCurrentSessionToolResults([]);
+            }
           
           setIsLoading(false);
           setStreamingContent('');
@@ -732,8 +715,8 @@ export const ChatInterface = () => {
       />
 
       <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur-sm">
+        {/* Header with darker background */}
+        <div className="flex items-center justify-between p-4 border-b bg-background-secondary backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 flex items-center justify-center">
               {getSectionIcon(currentSection, 'medium')}
