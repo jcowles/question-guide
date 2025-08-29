@@ -86,28 +86,34 @@ export const ChatInterface = () => {
       toolName: toolCall.function.name,
       status: 'calling',
       timestamp: new Date(),
+      toolCallId: toolCall.id, // Add unique tool call ID
     };
     
     setMcpToolStatuses(prev => [...prev, newStatus]);
     setShowMcpStatus(true);
   };
 
-  const handleToolResult = (toolName: string, result: any, error?: string) => {
+  const handleToolResult = (toolName: string, result: any, error?: string, toolCallId?: string) => {
     const completedStatus = {
       toolName,
       status: error ? 'error' as const : 'success' as const,
       result,
       error,
-      timestamp: new Date()
+      timestamp: new Date(),
+      toolCallId: toolCallId
     };
     
-    // Update transient MCP status for status bar
+    // Update transient MCP status for status bar using toolCallId if available
     setMcpToolStatuses(prev => 
-      prev.map(status => 
-        status.toolName === toolName && status.status === 'calling'
-          ? completedStatus
-          : status
-      )
+      prev.map(status => {
+        // Match by toolCallId if available, otherwise fall back to toolName + calling status
+        if (toolCallId && status.toolCallId === toolCallId) {
+          return completedStatus;
+        } else if (!toolCallId && status.toolName === toolName && status.status === 'calling') {
+          return completedStatus;
+        }
+        return status;
+      })
     );
     
     // Add to current session's tool results
@@ -300,7 +306,13 @@ export const ChatInterface = () => {
           });
         },
         (toolName: string, result: any, error?: string) => {
-          handleToolResult(toolName, result, error);
+          // Find the corresponding tool call for this result
+          const correspondingTool = executedTools.find(t => 
+            t.toolCall.function.name === toolName && t.result === null && t.error === null
+          );
+          const toolCallId = correspondingTool ? correspondingTool.toolCall.id : undefined;
+          
+          handleToolResult(toolName, result, error, toolCallId);
           
           // Debug logging for MCP tool results
           if (debugMode) {

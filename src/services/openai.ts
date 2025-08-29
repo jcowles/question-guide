@@ -22,6 +22,7 @@ export interface MCPToolStatus {
   timestamp: Date;
   result?: any;
   error?: string;
+  toolCallId?: string; // Add optional tool call ID for tracking individual calls
 }
 
 export interface ChatThread {
