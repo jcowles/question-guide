@@ -594,9 +594,22 @@ Return only the title, nothing else.`;
 
     // Create tool result messages with proper format for OpenAI API
     const toolMessages = executedTools.map((tool, index) => {
-      const content = tool.error 
-        ? `Error executing ${tool.toolCall.function.name}: ${tool.error}` 
-        : (tool.result ? JSON.stringify(tool.result) : 'No result available');
+      let content: string;
+      
+      if (tool.error) {
+        content = `Error executing ${tool.toolCall.function.name}: ${tool.error}`;
+      } else if (tool.result) {
+        // Extract actual text content from MCP result structure
+        if (tool.result.content && Array.isArray(tool.result.content) && tool.result.content[0]?.text) {
+          content = tool.result.content[0].text;
+        } else if (typeof tool.result === 'string') {
+          content = tool.result;
+        } else {
+          content = JSON.stringify(tool.result);
+        }
+      } else {
+        content = 'No result available';
+      }
       
       console.log('Creating tool message:', { 
         toolName: tool.toolCall.function.name, 
