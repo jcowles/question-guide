@@ -115,6 +115,14 @@ export const ChatInterface = () => {
       toolCallId: toolCallId
     };
     
+    console.log('🔧 TOOL RESULT DEBUG:', {
+      toolName,
+      toolCallId,
+      resultPreview: result ? JSON.stringify(result).substring(0, 100) + '...' : 'no result',
+      currentSessionLength: currentSessionToolResults.length,
+      streamingMessageId: streamingMessageId
+    });
+    
     // Update transient MCP status for status bar using toolCallId if available
     setMcpToolStatuses(prev => 
       prev.map(status => {
@@ -129,7 +137,16 @@ export const ChatInterface = () => {
     );
     
     // Add to current session's tool results
-    setCurrentSessionToolResults(prev => [...prev, completedStatus]);
+    setCurrentSessionToolResults(prev => {
+      const newResults = [...prev, completedStatus];
+      console.log('🔧 UPDATED currentSessionToolResults:', {
+        previous: prev.length,
+        new: newResults.length,
+        streamingMessageId: streamingMessageId,
+        results: newResults.map(r => ({ toolName: r.toolName, hasResult: !!r.result }))
+      });
+      return newResults;
+    });
 
     // Add debug message to chat if debug mode is enabled
     if (debugMode && currentThread) {
@@ -215,6 +232,12 @@ export const ChatInterface = () => {
     // Create placeholder AI message for streaming
     const aiMessageId = (Date.now() + 1).toString();
     setStreamingMessageId(aiMessageId);
+    
+    console.log('🚀 STARTING NEW MESSAGE:', {
+      userContent: content.substring(0, 50) + '...',
+      aiMessageId,
+      currentSessionToolResultsLength: currentSessionToolResults.length
+    });
 
     // Enable debug mode in service if debug is on
     if (openAIService && debugMode) {
@@ -281,6 +304,12 @@ export const ChatInterface = () => {
             
              // Associate current session tool results with this message (if any)
              if (currentSessionToolResults.length > 0) {
+               console.log('🔗 ASSOCIATING TOOL RESULTS (no tools):', {
+                 messageId: aiMessage.id,
+                 toolResultsCount: currentSessionToolResults.length,
+                 toolResults: currentSessionToolResults.map(r => ({ toolName: r.toolName, hasResult: !!r.result }))
+               });
+               
                setMessageToolResults(prev => ({ 
                  ...prev, 
                  [aiMessage.id]: [...currentSessionToolResults] 
@@ -507,6 +536,12 @@ export const ChatInterface = () => {
           
            // Associate current session tool results with this message
            if (currentSessionToolResults.length > 0) {
+             console.log('🔗 ASSOCIATING TOOL RESULTS (with tools):', {
+               messageId: aiMessage.id,
+               toolResultsCount: currentSessionToolResults.length,
+               toolResults: currentSessionToolResults.map(r => ({ toolName: r.toolName, hasResult: !!r.result }))
+             });
+             
              setMessageToolResults(prev => ({ 
                ...prev, 
                [aiMessage.id]: [...currentSessionToolResults] 
