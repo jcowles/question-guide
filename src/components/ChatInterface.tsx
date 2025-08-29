@@ -8,7 +8,7 @@ import { MCPStatusBar } from './MCPStatusBar';
 import { OpenAIService, ChatMessage as ChatMessageType, ChatSection, SYSTEM_MESSAGES, ChatThread, ToolCall, MCPToolStatus } from '@/services/openai';
 import { ThreadManager } from '@/services/threadManager';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Gamepad2, Cloud } from 'lucide-react';
+import { MessageSquare, Gamepad2, Cloud, Bug } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export const ChatInterface = () => {
@@ -23,6 +23,7 @@ export const ChatInterface = () => {
   const [sidebarUpdateTrigger, setSidebarUpdateTrigger] = useState(0);
   const [mcpToolStatuses, setMcpToolStatuses] = useState<MCPToolStatus[]>([]);
   const [showMcpStatus, setShowMcpStatus] = useState(false);
+  const [debugMode, setDebugMode] = useState(false); // Debug toggle
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -166,6 +167,11 @@ export const ChatInterface = () => {
     const aiMessageId = (Date.now() + 1).toString();
     setStreamingMessageId(aiMessageId);
 
+    // Enable debug mode in service if debug is on
+    if (openAIService && debugMode) {
+      openAIService.setDebugMode(true);
+    }
+
     try {
       let fullResponse = '';
       let hasToolCalls = false;
@@ -221,6 +227,17 @@ export const ChatInterface = () => {
         },
         (toolName: string, result: any, error?: string) => {
           handleToolResult(toolName, result, error);
+          
+          // Debug logging for MCP tool results
+          if (debugMode) {
+            console.log('🔧 MCP Tool Result:', {
+              toolName,
+              result,
+              error,
+              rawResult: result
+            });
+          }
+          
           // Update the corresponding tool call with results
           const toolIndex = executedTools.findIndex(t => 
             t.toolCall.function.name === toolName && t.result === null && t.error === null
@@ -290,6 +307,16 @@ export const ChatInterface = () => {
     try {
       let finalResponse = '';
       setStreamingContent('');
+
+      // Debug logging for messages with tools
+      if (debugMode) {
+        console.log('📨 Final OpenAI request with tools:', {
+          originalMessages: originalMessages.length,
+          assistantMessage,
+          toolMessages,
+          messagesWithTools: messagesWithTools.length
+        });
+      }
 
       await openAIService.sendMessageStream(
         messagesWithTools,
@@ -399,6 +426,15 @@ export const ChatInterface = () => {
               <p className="text-sm text-muted-foreground">{getSectionDescription(currentSection)}</p>
             </div>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDebugMode(!debugMode)}
+            className={debugMode ? "text-orange-600" : ""}
+          >
+            <Bug className="w-4 h-4 mr-2" />
+            {debugMode ? "Debug ON" : "Debug"}
+          </Button>
         </div>
 
         {/* Messages */}
@@ -420,6 +456,31 @@ export const ChatInterface = () => {
           {visibleMessages.map((message) => (
             <ChatMessage key={message.id} message={message} />
           ))}
+          
+          {/* Debug Mode: Show raw MCP tool results */}
+          {debugMode && mcpToolStatuses.length > 0 && (
+            <div className="bg-muted/50 p-4 rounded-lg border-l-4 border-orange-500">
+              <h4 className="font-semibold text-sm mb-2 flex items-center">
+                <Bug className="w-4 h-4 mr-2" />
+                Debug: MCP Tool Results
+              </h4>
+              {mcpToolStatuses.map((status, index) => (
+                <div key={index} className="mb-2 text-xs">
+                  <div className="font-mono">
+                    <strong>{status.toolName}</strong> - {status.status}
+                  </div>
+                  {status.result && (
+                    <pre className="mt-1 bg-background p-2 rounded text-xs overflow-auto">
+                      {JSON.stringify(status.result, null, 2)}
+                    </pre>
+                  )}
+                  {status.error && (
+                    <div className="text-red-600 mt-1">{status.error}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           
           {streamingMessageId && streamingContent && (
             <ChatMessage

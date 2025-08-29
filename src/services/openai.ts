@@ -112,6 +112,13 @@ export class OpenAIService {
     this.apiKey = apiKey;
   }
 
+  // Debug mode setter
+  private debugMode = false;
+  
+  setDebugMode(enabled: boolean) {
+    this.debugMode = enabled;
+  }
+
   async sendMessage(messages: ChatMessage[]): Promise<string> {
     const response = await fetch(`${this.baseURL}/chat/completions`, {
       method: 'POST',
@@ -151,37 +158,44 @@ export class OpenAIService {
       // Track accumulating tool calls
       const accumulatingToolCalls = new Map<number, Partial<ToolCall>>();
       
+      const requestBody = {
+        model: 'gpt-4o',
+        messages: messages.map(msg => {
+          const baseMessage: any = {
+            role: msg.role,
+            content: msg.content,
+          };
+          
+          // Add tool_calls if present
+          if (msg.toolCalls) {
+            baseMessage.tool_calls = msg.toolCalls;
+          }
+          
+          // Add tool_call_id for tool messages
+          if (msg.toolCallId) {
+            baseMessage.tool_call_id = msg.toolCallId;
+          }
+          
+          return baseMessage;
+        }),
+        ...(this.mcpTools.length > 0 && { tools: this.mcpTools, tool_choice: "auto" }),
+        max_tokens: 1500,
+        temperature: 0.7,
+        stream: true,
+      };
+
+      // Debug logging
+      if (this.debugMode) {
+        console.log('🚀 OpenAI Request:', JSON.stringify(requestBody, null, 2));
+      }
+
       const response = await fetch(`${this.baseURL}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.apiKey}`,
         },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: messages.map(msg => {
-            const baseMessage: any = {
-              role: msg.role,
-              content: msg.content,
-            };
-            
-            // Add tool_calls if present
-            if (msg.toolCalls) {
-              baseMessage.tool_calls = msg.toolCalls;
-            }
-            
-            // Add tool_call_id for tool messages
-            if (msg.toolCallId) {
-              baseMessage.tool_call_id = msg.toolCallId;
-            }
-            
-            return baseMessage;
-          }),
-          ...(this.mcpTools.length > 0 && { tools: this.mcpTools, tool_choice: "auto" }),
-          max_tokens: 1500,
-          temperature: 0.7,
-          stream: true,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
