@@ -449,7 +449,7 @@ export const ChatInterface = () => {
           ThreadManager.addMessageToThread(currentSection, currentThread.id, aiMessage);
           setCurrentThread(prev => prev ? { 
             ...prev, 
-            messages: [...prev.messages, assistantMessage, ...toolMessages, aiMessage] 
+            messages: [...prev.messages, aiMessage] 
           } : null);
           
           // Associate current session tool results with this message
