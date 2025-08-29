@@ -25,6 +25,27 @@ export const ChatInterface = () => {
   const [completedToolResults, setCompletedToolResults] = useState<MCPToolStatus[]>([]);
   const [messageToolResults, setMessageToolResults] = useState<Record<string, MCPToolStatus[]>>({});
   const [currentSessionToolResults, setCurrentSessionToolResults] = useState<MCPToolStatus[]>([]);
+
+  // Wrap setCurrentSessionToolResults to add logging
+  const loggedSetCurrentSessionToolResults = (newValue: MCPToolStatus[] | ((prev: MCPToolStatus[]) => MCPToolStatus[])) => {
+    if (typeof newValue === 'function') {
+      setCurrentSessionToolResults(prev => {
+        const result = newValue(prev);
+        console.log('🚨 setCurrentSessionToolResults FUNCTION CALL:', {
+          previousLength: prev.length,
+          newLength: result.length,
+          stackTrace: new Error().stack?.split('\n')[2]
+        });
+        return result;
+      });
+    } else {
+      console.log('🚨 setCurrentSessionToolResults DIRECT CALL:', {
+        newLength: newValue.length,
+        stackTrace: new Error().stack?.split('\n')[2]
+      });
+      setCurrentSessionToolResults(newValue);
+    }
+  };
   const [showMcpStatus, setShowMcpStatus] = useState(false);
   const [debugMode, setDebugMode] = useState(false); // Debug toggle
   const [debugRequestAdded, setDebugRequestAdded] = useState<string | null>(null); // Track debug request
@@ -67,7 +88,7 @@ export const ChatInterface = () => {
   const handleSectionChange = (section: ChatSection) => {
     setCurrentSection(section);
     // Only clear transient tool states, not the message associations
-    setCurrentSessionToolResults([]);
+    loggedSetCurrentSessionToolResults([]);
     setMcpToolStatuses([]);
     setShowMcpStatus(false);
   };
@@ -78,7 +99,7 @@ export const ChatInterface = () => {
       setCurrentThreadId(threadId);
       setCurrentThread(thread);
       // Only clear transient tool states, not the message associations
-      setCurrentSessionToolResults([]);
+      loggedSetCurrentSessionToolResults([]);
       setMcpToolStatuses([]);
       setShowMcpStatus(false);
     }
@@ -89,7 +110,7 @@ export const ChatInterface = () => {
     setCurrentThreadId(newThread.id);
     setCurrentThread(newThread);
     // Only clear transient tool states for new threads
-    setCurrentSessionToolResults([]);
+    loggedSetCurrentSessionToolResults([]);
     setMcpToolStatuses([]);
     setShowMcpStatus(false);
   };
@@ -138,7 +159,7 @@ export const ChatInterface = () => {
     );
     
     // Add to current session's tool results
-    setCurrentSessionToolResults(prev => {
+    loggedSetCurrentSessionToolResults(prev => {
       const newResults = [...prev, completedStatus];
       console.log('🔧 UPDATED currentSessionToolResults:', {
         previous: prev.length,
@@ -329,9 +350,9 @@ export const ChatInterface = () => {
                  ...prev, 
                  [aiMessage.id]: [...currentSessionToolResults] 
                }));
-               // Clear session results AFTER association
-               setCurrentSessionToolResults([]);
-             }
+                // Clear session results AFTER association
+                loggedSetCurrentSessionToolResults([]);
+              }
             
             setIsLoading(false);
             setStreamingContent('');
@@ -584,9 +605,9 @@ export const ChatInterface = () => {
                ...prev, 
                [aiMessage.id]: [...currentSessionToolResults] 
              }));
-             // Clear session results AFTER association
-             setCurrentSessionToolResults([]);
-           }
+              // Clear session results AFTER association
+              loggedSetCurrentSessionToolResults([]);
+            }
           
           setIsLoading(false);
           setStreamingContent('');
