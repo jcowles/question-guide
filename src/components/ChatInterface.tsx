@@ -534,13 +534,13 @@ export const ChatInterface = () => {
         },
         () => {
           console.log('✅ Final response completed:', { finalResponse, length: finalResponse.length });
-          // Final response completed
-          const aiMessage: ChatMessageType = {
-            id: aiMessageId,
-            role: 'assistant',
-            content: finalResponse,
-            timestamp: new Date(),
-          };
+           // Final response completed
+           const aiMessage: ChatMessageType = {
+             id: aiMessageId, // Use the original aiMessageId, not a new generated one
+             role: 'assistant',
+             content: finalResponse,
+             timestamp: new Date(),
+           };
 
           console.log('💾 Adding final AI message to thread:', aiMessage);
           ThreadManager.addMessageToThread(currentSection, currentThread.id, aiMessage);
