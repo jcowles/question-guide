@@ -219,7 +219,8 @@ export class MCPClient {
   private async makeRequest(method: string, params: any): Promise<any> {
     const requestId = this.requestId++;
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
     };
 
     if (this.session) {
@@ -230,6 +231,18 @@ export class MCPClient {
     if (this.config.apiKey) {
       headers['Authorization'] = `Bearer ${this.config.apiKey}`;
     }
+
+    console.log('MCP Request:', {
+      url: this.config.baseUrl,
+      method,
+      headers,
+      body: {
+        jsonrpc: '2.0',
+        id: requestId,
+        method,
+        params
+      }
+    });
 
     const response = await fetch(this.config.baseUrl, {
       method: 'POST',
@@ -242,8 +255,16 @@ export class MCPClient {
       })
     });
 
+    console.log('MCP Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries())
+    });
+
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('MCP Error Response:', errorText);
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json();
