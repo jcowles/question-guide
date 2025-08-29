@@ -160,6 +160,12 @@ Return only the title, nothing else.`;
   };
 
   const handleNewThread = () => {
+    // Don't create new thread if current thread is empty (no messages)
+    if (currentThread && currentThread.messages.length === 0) {
+      console.log('🧵 Current thread is empty, not creating new thread');
+      return;
+    }
+    
     const newThread = ThreadManager.createThread(currentSection);
     setCurrentThreadId(newThread.id);
     setCurrentThread(newThread);
@@ -167,6 +173,9 @@ Return only the title, nothing else.`;
     setCurrentSessionToolResults([]);
     setMcpToolStatuses([]);
     setShowMcpStatus(false);
+    
+    // Immediately trigger sidebar update to show new thread
+    setSidebarUpdateTrigger(prev => prev + 1);
   };
 
   const handleToolCall = (toolCall: ToolCall) => {
