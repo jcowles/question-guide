@@ -163,10 +163,10 @@ export class OpenAIService {
             role: msg.role,
             content: msg.content,
             ...(msg.toolCalls && { tool_calls: msg.toolCalls }),
-            ...(msg.toolCallId && { tool_call_id: msg.toolCallId })
+            ...(msg.toolCallId && { tool_call_id: msg.toolCallId }),
+            ...(msg.role === 'assistant' && msg.content === null && { content: null })
           })),
-          tools: this.mcpTools,
-          tool_choice: "auto",
+          ...(this.mcpTools.length > 0 && { tools: this.mcpTools, tool_choice: "auto" }),
           max_tokens: 1500,
           temperature: 0.7,
           stream: true,

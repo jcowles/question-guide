@@ -101,7 +101,7 @@ export const ChatInterface = () => {
       )
     );
 
-    // Auto-hide status bar after 5 seconds if all tools completed
+    // Auto-hide status bar after 3 seconds once all tools completed
     setTimeout(() => {
       setMcpToolStatuses(prev => {
         const hasActiveCalls = prev.some(status => status.status === 'calling');
@@ -112,7 +112,7 @@ export const ChatInterface = () => {
         }
         return prev;
       });
-    }, 5000);
+    }, 3000);
   };
 
   const handleSendMessage = async (content: string) => {
@@ -248,24 +248,29 @@ export const ChatInterface = () => {
     executedTools: any[], 
     aiMessageId: string
   ) => {
-    if (!openAIService || !currentThread) return;
+    if (!openAIService || !currentThread || executedTools.length === 0) {
+      setIsLoading(false);
+      setStreamingContent('');
+      setStreamingMessageId(null);
+      return;
+    }
 
     // Create assistant message for tool calls first
     const assistantMessage: ChatMessageType = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: '',
+      content: null,
       timestamp: new Date(),
       toolCalls: executedTools.map(tool => tool.toolCall)
     };
 
-    // Create tool result messages with proper format
+    // Create tool result messages with proper format for OpenAI API
     const toolMessages = executedTools.map((tool, index) => ({
       id: `tool-${Date.now()}-${index}`,
       role: 'tool' as const,
       content: tool.error 
-        ? `Error: ${tool.error}` 
-        : `Search results for "${JSON.parse(tool.toolCall.function.arguments).query}": ${JSON.stringify(tool.result)}`,
+        ? `Error executing ${tool.toolCall.function.name}: ${tool.error}` 
+        : JSON.stringify(tool.result),
       timestamp: new Date(),
       toolCallId: tool.toolCall.id
     }));
@@ -297,6 +302,10 @@ export const ChatInterface = () => {
           setIsLoading(false);
           setStreamingContent('');
           setStreamingMessageId(null);
+          
+          // Force hide MCP status bar after final response
+          setShowMcpStatus(false);
+          setTimeout(() => setMcpToolStatuses([]), 300);
         },
         (error: Error) => {
           console.error('Final response error:', error);
@@ -308,6 +317,7 @@ export const ChatInterface = () => {
           setIsLoading(false);
           setStreamingContent('');
           setStreamingMessageId(null);
+          setShowMcpStatus(false);
         }
       );
     } catch (error) {
@@ -315,6 +325,7 @@ export const ChatInterface = () => {
       setIsLoading(false);
       setStreamingContent('');
       setStreamingMessageId(null);
+      setShowMcpStatus(false);
     }
   };
 
