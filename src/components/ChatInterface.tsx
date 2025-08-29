@@ -34,14 +34,14 @@ export const ChatInterface = () => {
         console.log('🚨 setCurrentSessionToolResults FUNCTION CALL:', {
           previousLength: prev.length,
           newLength: result.length,
-          stackTrace: new Error().stack?.split('\n')[2]
+          fullStackTrace: new Error().stack
         });
         return result;
       });
     } else {
       console.log('🚨 setCurrentSessionToolResults DIRECT CALL:', {
         newLength: newValue.length,
-        stackTrace: new Error().stack?.split('\n')[2]
+        fullStackTrace: new Error().stack
       });
       setCurrentSessionToolResults(newValue);
     }
