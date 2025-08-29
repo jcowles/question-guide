@@ -484,6 +484,10 @@ export const ChatInterface = () => {
 
     await waitForToolResults();
     console.log('🔧 All tool results ready, proceeding with final response');
+    console.log('🔧 POST-WAIT currentSessionToolResults:', {
+      length: currentSessionToolResults.length,
+      details: currentSessionToolResults.map(r => ({ toolName: r.toolName, hasResult: !!r.result }))
+    });
 
     // Create assistant message for tool calls first (don't show this in UI)
     const assistantMessage: ChatMessageType = {
@@ -586,28 +590,46 @@ export const ChatInterface = () => {
           } : null);
           
            // Associate current session tool results with this message
-           console.log('🔍 About to check if currentSessionToolResults.length > 0:', currentSessionToolResults.length > 0);
-           if (currentSessionToolResults.length > 0) {
-             console.log('🔗 ASSOCIATING TOOL RESULTS (with tools):', {
+           console.log('🔍 About to check tool association with executedTools instead of state');
+           
+           // Use executedTools instead of currentSessionToolResults to avoid state timing issues
+           const toolResultsForAssociation = executedTools
+             .filter(tool => tool.result !== null || tool.error !== null)
+             .map(tool => ({
+               toolName: tool.toolCall.function.name,
+               status: tool.error ? 'error' as const : 'success' as const,
+               result: tool.result,
+               error: tool.error,
+               timestamp: new Date(),
+               toolCallId: tool.toolCall.id
+             }));
+           
+           console.log('🔍 Tool results from executedTools:', {
+             count: toolResultsForAssociation.length,
+             tools: toolResultsForAssociation.map(r => ({ toolName: r.toolName, hasResult: !!r.result }))
+           });
+           
+           if (toolResultsForAssociation.length > 0) {
+             console.log('🔗 ASSOCIATING TOOL RESULTS (with tools) - FIXED:', {
                messageId: aiMessage.id,
-               toolResultsCount: currentSessionToolResults.length,
-               toolResults: currentSessionToolResults.map(r => ({ toolName: r.toolName, hasResult: !!r.result }))
+               toolResultsCount: toolResultsForAssociation.length,
+               toolResults: toolResultsForAssociation.map(r => ({ toolName: r.toolName, hasResult: !!r.result }))
              });
              
              // Add to debug info
              setDebugInfo(prev => [...prev, {
                messageId: aiMessage.id,
-               toolResultCount: currentSessionToolResults.length,
-               action: `Associated ${currentSessionToolResults.length} tool results (with tools path)`
+               toolResultCount: toolResultsForAssociation.length,
+               action: `Associated ${toolResultsForAssociation.length} tool results (FIXED with executedTools)`
              }]);
              
              setMessageToolResults(prev => ({ 
                ...prev, 
-               [aiMessage.id]: [...currentSessionToolResults] 
+               [aiMessage.id]: [...toolResultsForAssociation] 
              }));
-              // Clear session results AFTER association
-              loggedSetCurrentSessionToolResults([]);
-            }
+             // Clear session results AFTER association
+             loggedSetCurrentSessionToolResults([]);
+           }
           
           setIsLoading(false);
           setStreamingContent('');
