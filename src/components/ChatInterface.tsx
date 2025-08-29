@@ -554,9 +554,24 @@ export const ChatInterface = () => {
             </div>
           )}
           
-          {visibleMessages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
-          ))}
+          {visibleMessages.map((message) => {
+            // For AI messages, find associated tool results
+            const associatedToolResults = message.role === 'assistant' && mcpToolStatuses.length > 0 
+              ? mcpToolStatuses.filter(status => {
+                  // Simple heuristic: associate tool results with the most recent AI message
+                  // In a more sophisticated implementation, you'd track which message triggered which tools
+                  return true;
+                })
+              : [];
+            
+            return (
+              <ChatMessage 
+                key={message.id} 
+                message={message} 
+                toolResults={associatedToolResults}
+              />
+            );
+          })}
           
           {/* Debug Mode: Show raw MCP tool results */}
           {debugMode && mcpToolStatuses.length > 0 && (
@@ -592,6 +607,7 @@ export const ChatInterface = () => {
                 timestamp: new Date(),
               }}
               streamingContent={streamingContent}
+              toolResults={mcpToolStatuses}
             />
           )}
           

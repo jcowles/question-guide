@@ -1,21 +1,27 @@
-import { ChatMessage as ChatMessageType } from '@/services/openai';
+import { ChatMessage as ChatMessageType, MCPToolStatus } from '@/services/openai';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Bot, User } from 'lucide-react';
+import { Bot, User, ChevronDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useState } from 'react';
 
 interface ChatMessageProps {
   message: ChatMessageType;
   isTyping?: boolean;
   streamingContent?: string;
+  toolResults?: MCPToolStatus[];
 }
 
-export const ChatMessage = ({ message, isTyping = false, streamingContent }: ChatMessageProps) => {
+export const ChatMessage = ({ message, isTyping = false, streamingContent, toolResults }: ChatMessageProps) => {
+  const [isToolResultsOpen, setIsToolResultsOpen] = useState(false);
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const isTool = message.role === 'tool';
   
   // Don't render system messages or tool messages
   if (isSystem || isTool) return null;
+  
+  const hasToolResults = toolResults && toolResults.length > 0;
 
   return (
     <div className={`flex gap-3 mb-4 animate-message-in ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -74,6 +80,51 @@ export const ChatMessage = ({ message, isTyping = false, streamingContent }: Cha
         <div className={`text-xs text-muted-foreground mt-1 ${isUser ? 'text-right' : 'text-left'}`}>
           {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </div>
+        
+        {/* MCP Tool Results - Only show for AI messages */}
+        {!isUser && hasToolResults && (
+          <div className="mt-2">
+            <Collapsible open={isToolResultsOpen} onOpenChange={setIsToolResultsOpen}>
+              <CollapsibleTrigger className="flex items-center text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <ChevronDown className={`h-3 w-3 mr-1 transition-transform ${isToolResultsOpen ? 'rotate-180' : ''}`} />
+                MCP Tool Results ({toolResults?.length})
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-2 p-3 bg-muted/30 rounded-lg border border-muted">
+                  <div className="space-y-2">
+                    {toolResults?.map((tool, index) => (
+                      <div key={index} className="text-xs">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-foreground">{tool.toolName}</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                            tool.status === 'success' 
+                              ? 'bg-green-500/20 text-green-400' 
+                              : tool.status === 'error'
+                              ? 'bg-red-500/20 text-red-400'
+                              : 'bg-yellow-500/20 text-yellow-400'
+                          }`}>
+                            {tool.status}
+                          </span>
+                        </div>
+                        {tool.error ? (
+                          <div className="text-red-400 font-mono text-[10px] bg-red-500/10 p-1 rounded">
+                            Error: {tool.error}
+                          </div>
+                        ) : tool.result ? (
+                          <pre className="text-muted-foreground font-mono text-[10px] bg-black/20 p-1 rounded overflow-x-auto">
+                            {JSON.stringify(tool.result, null, 2)}
+                          </pre>
+                        ) : (
+                          <div className="text-muted-foreground text-[10px]">No result available</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        )}
       </div>
     </div>
   );
