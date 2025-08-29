@@ -313,11 +313,11 @@ export const ChatInterface = () => {
       return;
     }
 
-    // Create assistant message for tool calls first
+    // Create assistant message for tool calls first (don't show this in UI)
     const assistantMessage: ChatMessageType = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: null,
+      content: '', // Empty string instead of null to avoid display issues
       timestamp: new Date(),
       toolCalls: executedTools.map(tool => tool.toolCall)
     };
@@ -450,6 +450,10 @@ export const ChatInterface = () => {
         contentStart: m.content.substring(0, 50) 
       });
       return isDebugMessage;
+    }
+    // Hide assistant messages that are just for tool calls (empty content with toolCalls)
+    if (m.role === 'assistant' && (!m.content || m.content.trim() === '') && m.toolCalls && m.toolCalls.length > 0) {
+      return false;
     }
     // Hide tool messages
     return m.role !== 'tool';
