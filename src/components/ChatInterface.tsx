@@ -198,7 +198,7 @@ export const ChatInterface = () => {
     const iconSize = size === 'small' ? 'w-5 h-5' : size === 'medium' ? 'w-7 h-7' : 'w-8 h-8';
     switch (section) {
       case 'steam':
-        return <img src={steamLogo} alt="Steam" className={iconSize} />;
+        return <img src={steamLogo} alt="Steam" className={`${iconSize} bg-transparent`} />;
       case 'source2':
         return <Gamepad2 className={iconSize} />;
     }

@@ -63,7 +63,7 @@ export const ChatSidebar = ({
   const getSectionIcon = (section: ChatSection) => {
     switch (section) {
       case 'steam':
-        return <img src={steamLogo} alt="Steam" className="w-4 h-4" />;
+        return <img src={steamLogo} alt="Steam" className="w-4 h-4 bg-transparent" />;
       case 'source2':
         return <Gamepad2 size={16} />;
     }
