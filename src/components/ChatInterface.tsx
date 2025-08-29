@@ -65,10 +65,10 @@ export const ChatInterface = () => {
 
   const handleSectionChange = (section: ChatSection) => {
     setCurrentSection(section);
-    // Clear tool results when changing sections
-    setMessageToolResults({});
+    // Only clear transient tool states, not the message associations
     setCurrentSessionToolResults([]);
     setMcpToolStatuses([]);
+    setShowMcpStatus(false);
   };
 
   const handleThreadSelect = (threadId: string) => {
@@ -76,10 +76,10 @@ export const ChatInterface = () => {
     if (thread) {
       setCurrentThreadId(threadId);
       setCurrentThread(thread);
-      // Clear tool results when switching threads
-      setMessageToolResults({});
+      // Only clear transient tool states, not the message associations
       setCurrentSessionToolResults([]);
       setMcpToolStatuses([]);
+      setShowMcpStatus(false);
     }
   };
 
@@ -87,10 +87,10 @@ export const ChatInterface = () => {
     const newThread = ThreadManager.createThread(currentSection);
     setCurrentThreadId(newThread.id);
     setCurrentThread(newThread);
-    // Clear tool results when creating new thread
-    setMessageToolResults({});
+    // Only clear transient tool states for new threads
     setCurrentSessionToolResults([]);
     setMcpToolStatuses([]);
+    setShowMcpStatus(false);
   };
 
   const handleToolCall = (toolCall: ToolCall) => {
