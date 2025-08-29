@@ -1,15 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
+import { ChatSidebar } from './ChatSidebar';
 import { ApiKeyDialog } from './ApiKeyDialog';
-import { OpenAIService, ChatMessage as ChatMessageType } from '@/services/openai';
+import { OpenAIService, ChatMessage as ChatMessageType, ChatSection, SYSTEM_MESSAGES, ChatThread } from '@/services/openai';
+import { ThreadManager } from '@/services/threadManager';
 import { Button } from '@/components/ui/button';
-import { Settings, MessageSquare } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export const ChatInterface = () => {
-  const [messages, setMessages] = useState<ChatMessageType[]>([]);
+  const [currentSection, setCurrentSection] = useState<ChatSection>('steam');
+  const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
+  const [currentThread, setCurrentThread] = useState<ChatThread | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingContent, setStreamingContent] = useState('');
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [openAIService, setOpenAIService] = useState<OpenAIService | null>(null);
   const [showApiDialog, setShowApiDialog] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -26,7 +32,17 @@ export const ChatInterface = () => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading]);
+  }, [currentThread?.messages, isLoading, streamingContent]);
+
+  useEffect(() => {
+    // Load or create initial thread when section changes
+    const threads = ThreadManager.getThreadsBySection(currentSection);
+    if (threads.length > 0) {
+      handleThreadSelect(threads[0].id);
+    } else {
+      handleNewThread();
+    }
+  }, [currentSection]);
 
   const handleApiKeySaved = (key: string) => {
     OpenAIService.setApiKey(key);
@@ -37,8 +53,26 @@ export const ChatInterface = () => {
     });
   };
 
+  const handleSectionChange = (section: ChatSection) => {
+    setCurrentSection(section);
+  };
+
+  const handleThreadSelect = (threadId: string) => {
+    const thread = ThreadManager.getThread(currentSection, threadId);
+    if (thread) {
+      setCurrentThreadId(threadId);
+      setCurrentThread(thread);
+    }
+  };
+
+  const handleNewThread = () => {
+    const newThread = ThreadManager.createThread(currentSection);
+    setCurrentThreadId(newThread.id);
+    setCurrentThread(newThread);
+  };
+
   const handleSendMessage = async (content: string) => {
-    if (!openAIService) {
+    if (!openAIService || !currentThread) {
       setShowApiDialog(true);
       return;
     }
@@ -50,21 +84,76 @@ export const ChatInterface = () => {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
-
-    try {
-      const updatedMessages = [...messages, userMessage];
-      const response = await openAIService.sendMessage(updatedMessages);
-      
-      const aiMessage: ChatMessageType = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response,
+    // Add system message if this is the first user message
+    const messages = [...currentThread.messages];
+    if (messages.filter(m => m.role !== 'system').length === 0) {
+      const systemMessage: ChatMessageType = {
+        id: `system-${Date.now()}`,
+        role: 'system',
+        content: SYSTEM_MESSAGES[currentSection],
         timestamp: new Date(),
       };
+      messages.push(systemMessage);
+      ThreadManager.addMessageToThread(currentSection, currentThread.id, systemMessage);
+    }
 
-      setMessages(prev => [...prev, aiMessage]);
+    // Add user message
+    messages.push(userMessage);
+    ThreadManager.addMessageToThread(currentSection, currentThread.id, userMessage);
+    
+    // Update local state
+    setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, userMessage] } : null);
+
+    // Generate thread name from first user message if needed
+    if (currentThread.name.startsWith('Chat ')) {
+      const threadName = content.slice(0, 30) + (content.length > 30 ? '...' : '');
+      ThreadManager.updateThread(currentSection, currentThread.id, { name: threadName });
+      setCurrentThread(prev => prev ? { ...prev, name: threadName } : null);
+    }
+
+    setIsLoading(true);
+    setStreamingContent('');
+    
+    // Create placeholder AI message for streaming
+    const aiMessageId = (Date.now() + 1).toString();
+    setStreamingMessageId(aiMessageId);
+
+    try {
+      let fullResponse = '';
+      
+      await openAIService.sendMessageStream(
+        messages,
+        (chunk: string) => {
+          fullResponse += chunk;
+          setStreamingContent(fullResponse);
+        },
+        () => {
+          // Stream completed
+          const aiMessage: ChatMessageType = {
+            id: aiMessageId,
+            role: 'assistant',
+            content: fullResponse,
+            timestamp: new Date(),
+          };
+
+          ThreadManager.addMessageToThread(currentSection, currentThread.id, aiMessage);
+          setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, aiMessage] } : null);
+          setIsLoading(false);
+          setStreamingContent('');
+          setStreamingMessageId(null);
+        },
+        (error: Error) => {
+          console.error('Streaming error:', error);
+          toast({
+            title: "Error",
+            description: error.message || "Failed to get AI response",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          setStreamingContent('');
+          setStreamingMessageId(null);
+        }
+      );
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -72,8 +161,9 @@ export const ChatInterface = () => {
         description: error instanceof Error ? error.message : "Failed to get AI response",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
+      setStreamingContent('');
+      setStreamingMessageId(null);
     }
   };
 
@@ -81,62 +171,101 @@ export const ChatInterface = () => {
     setShowApiDialog(true);
   };
 
-  return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-background to-background-secondary">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl message-user flex items-center justify-center">
-            <MessageSquare className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold">AI Chat Assistant</h1>
-            <p className="text-sm text-muted-foreground">Powered by GPT-4o</p>
-          </div>
-        </div>
-        <Button variant="ghost" size="icon" onClick={handleSettingsClick}>
-          <Settings size={18} />
-        </Button>
-      </div>
+  const getSectionTitle = (section: ChatSection) => {
+    switch (section) {
+      case 'steam':
+        return 'Steam Assistant';
+      case 'source2':
+        return 'Source 2 Assistant';
+    }
+  };
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-            <div className="w-16 h-16 rounded-2xl message-user flex items-center justify-center">
-              <MessageSquare className="w-8 h-8 text-white" />
+  const getSectionDescription = (section: ChatSection) => {
+    switch (section) {
+      case 'steam':
+        return 'Ask about Steam platform, games, features, and community';
+      case 'source2':
+        return 'Get help with Source 2 engine development and modding';
+    }
+  };
+
+  const visibleMessages = currentThread?.messages.filter(m => m.role !== 'system') || [];
+
+  return (
+    <div className="flex h-screen bg-gradient-to-br from-background to-background-secondary">
+      <ChatSidebar
+        currentSection={currentSection}
+        currentThreadId={currentThreadId}
+        onSectionChange={handleSectionChange}
+        onThreadSelect={handleThreadSelect}
+        onNewThread={handleNewThread}
+        onSettingsClick={handleSettingsClick}
+      />
+
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl message-user flex items-center justify-center">
+              <MessageSquare className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold mb-2">Welcome to AI Chat!</h2>
-              <p className="text-muted-foreground max-w-md">
-                Start a conversation with GPT-4o. Ask questions, get help with coding, 
-                creative writing, or just have a casual chat.
-              </p>
+              <h1 className="text-xl font-semibold">{getSectionTitle(currentSection)}</h1>
+              <p className="text-sm text-muted-foreground">{getSectionDescription(currentSection)}</p>
             </div>
           </div>
-        )}
-        
-        {messages.map((message) => (
-          <ChatMessage key={message.id} message={message} />
-        ))}
-        
-        {isLoading && (
-          <ChatMessage
-            message={{
-              id: 'typing',
-              role: 'assistant',
-              content: '',
-              timestamp: new Date(),
-            }}
-            isTyping
-          />
-        )}
-        
-        <div ref={messagesEndRef} />
-      </div>
+        </div>
 
-      {/* Input */}
-      <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {visibleMessages.length === 0 && !streamingContent && (
+            <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+              <div className="w-16 h-16 rounded-2xl message-user flex items-center justify-center">
+                <MessageSquare className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold mb-2">Welcome to {getSectionTitle(currentSection)}!</h2>
+                <p className="text-muted-foreground max-w-md">
+                  {getSectionDescription(currentSection)}. Start a conversation to get expert help and information.
+                </p>
+              </div>
+            </div>
+          )}
+          
+          {visibleMessages.map((message) => (
+            <ChatMessage key={message.id} message={message} />
+          ))}
+          
+          {streamingMessageId && streamingContent && (
+            <ChatMessage
+              message={{
+                id: streamingMessageId,
+                role: 'assistant',
+                content: '',
+                timestamp: new Date(),
+              }}
+              streamingContent={streamingContent}
+            />
+          )}
+          
+          {isLoading && !streamingContent && (
+            <ChatMessage
+              message={{
+                id: 'typing',
+                role: 'assistant',
+                content: '',
+                timestamp: new Date(),
+              }}
+              isTyping
+            />
+          )}
+          
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input */}
+        <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
+      </div>
 
       {/* API Key Dialog */}
       <ApiKeyDialog

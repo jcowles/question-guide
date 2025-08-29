@@ -5,10 +5,15 @@ import { Bot, User } from 'lucide-react';
 interface ChatMessageProps {
   message: ChatMessageType;
   isTyping?: boolean;
+  streamingContent?: string;
 }
 
-export const ChatMessage = ({ message, isTyping = false }: ChatMessageProps) => {
+export const ChatMessage = ({ message, isTyping = false, streamingContent }: ChatMessageProps) => {
   const isUser = message.role === 'user';
+  const isSystem = message.role === 'system';
+  
+  // Don't render system messages
+  if (isSystem) return null;
 
   return (
     <div className={`flex gap-3 mb-4 animate-message-in ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -33,7 +38,10 @@ export const ChatMessage = ({ message, isTyping = false }: ChatMessageProps) => 
               <div className="w-2 h-2 bg-current rounded-full animate-pulse-typing" style={{ animationDelay: '0.4s' }}></div>
             </div>
           ) : (
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+              {streamingContent || message.content}
+              {streamingContent && <span className="animate-pulse">|</span>}
+            </p>
           )}
         </div>
         
