@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
 import { 
   SquarePen, 
   MessageSquare, 
@@ -111,29 +110,19 @@ export const ChatSidebar = ({
                   ? getSectionBg(section)
                   : 'hover:bg-muted/50 text-foreground'
               }`}
-              onClick={() => onSectionChange(section)}
+              onClick={() => {
+                onSectionChange(section);
+                onNewThread(); // Create new chat when clicking assistant button
+              }}
             >
               {getSectionIcon(section)}
               {getSectionName(section)}
-              <Badge variant="secondary" className="ml-auto">
-                {threads[section]?.length || 0}
-              </Badge>
+              <SquarePen size={14} className="ml-auto" />
             </Button>
           ))}
         </div>
       </div>
 
-      {/* New Chat Button */}
-      <div className="p-4 border-b">
-        <Button 
-          onClick={onNewThread} 
-          variant="ghost"
-          className="w-full gap-2 text-muted-foreground hover:text-foreground hover:bg-muted/50"
-        >
-          <SquarePen size={16} />
-          New Chat
-        </Button>
-      </div>
 
       {/* Thread List */}
       <ScrollArea className="flex-1 p-2">
