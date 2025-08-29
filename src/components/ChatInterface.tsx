@@ -170,13 +170,16 @@ export const ChatInterface = () => {
       };
       messages.push(systemMessage);
       ThreadManager.addMessageToThread(currentSection, currentThread.id, systemMessage);
+      
+      // Update local state immediately with system message
+      setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, systemMessage] } : null);
     }
 
     // Add user message
     messages.push(userMessage);
     ThreadManager.addMessageToThread(currentSection, currentThread.id, userMessage);
     
-    // Update local state
+    // Update local state with user message
     setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, userMessage] } : null);
     
     // Trigger sidebar update
