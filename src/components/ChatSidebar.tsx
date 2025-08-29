@@ -111,8 +111,13 @@ export const ChatSidebar = ({
                   : 'hover:bg-muted/50 text-foreground'
               }`}
               onClick={() => {
-                onSectionChange(section);
-                // Don't auto-create new thread - let user create one by sending first message
+                if (currentSection === section) {
+                  // Already on this assistant - create new thread
+                  onNewThread();
+                } else {
+                  // Switch to different assistant
+                  onSectionChange(section);
+                }
               }}
             >
               {getSectionIcon(section)}
