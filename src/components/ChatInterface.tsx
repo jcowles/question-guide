@@ -28,6 +28,7 @@ export const ChatInterface = () => {
   const [showMcpStatus, setShowMcpStatus] = useState(false);
   const [debugMode, setDebugMode] = useState(false); // Debug toggle
   const [debugRequestAdded, setDebugRequestAdded] = useState<string | null>(null); // Track debug request
+  const [debugInfo, setDebugInfo] = useState<{messageId: string, toolResultCount: number, action: string}[]>([]); // Debug tool result tracking
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -238,6 +239,13 @@ export const ChatInterface = () => {
       aiMessageId,
       currentSessionToolResultsLength: currentSessionToolResults.length
     });
+    
+    // Add to debug info
+    setDebugInfo(prev => [...prev, {
+      messageId: aiMessageId,
+      toolResultCount: currentSessionToolResults.length,
+      action: `Starting message: "${content.substring(0, 30)}..."`
+    }]);
 
     // Enable debug mode in service if debug is on
     if (openAIService && debugMode) {
@@ -309,6 +317,13 @@ export const ChatInterface = () => {
                  toolResultsCount: currentSessionToolResults.length,
                  toolResults: currentSessionToolResults.map(r => ({ toolName: r.toolName, hasResult: !!r.result }))
                });
+               
+               // Add to debug info
+               setDebugInfo(prev => [...prev, {
+                 messageId: aiMessage.id,
+                 toolResultCount: currentSessionToolResults.length,
+                 action: `Associated ${currentSessionToolResults.length} tool results (no tools path)`
+               }]);
                
                setMessageToolResults(prev => ({ 
                  ...prev, 
@@ -542,6 +557,13 @@ export const ChatInterface = () => {
                toolResults: currentSessionToolResults.map(r => ({ toolName: r.toolName, hasResult: !!r.result }))
              });
              
+             // Add to debug info
+             setDebugInfo(prev => [...prev, {
+               messageId: aiMessage.id,
+               toolResultCount: currentSessionToolResults.length,
+               action: `Associated ${currentSessionToolResults.length} tool results (with tools path)`
+             }]);
+             
              setMessageToolResults(prev => ({ 
                ...prev, 
                [aiMessage.id]: [...currentSessionToolResults] 
@@ -659,10 +681,36 @@ export const ChatInterface = () => {
             <Bug className="w-4 h-4 mr-2" />
             {debugMode ? "Debug ON" : "Debug"}
           </Button>
+          {debugMode && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDebugInfo([])}
+            >
+              Clear Debug
+            </Button>
+          )}
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Debug Panel */}
+          {debugMode && debugInfo.length > 0 && (
+            <div className="bg-muted/50 p-4 rounded-lg border-l-4 border-blue-500 mb-4">
+              <h4 className="font-semibold text-sm mb-2 flex items-center">
+                <Bug className="w-4 h-4 mr-2" />
+                Tool Result Association Debug
+              </h4>
+              <div className="space-y-1 text-xs">
+                {debugInfo.slice(-10).map((info, index) => (
+                  <div key={index} className="font-mono">
+                    <span className="text-muted-foreground">{info.messageId}:</span> {info.action}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
           {visibleMessages.length === 0 && !streamingContent && (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
               <div className="w-16 h-16 flex items-center justify-center">
