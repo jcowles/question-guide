@@ -6,9 +6,8 @@ import { ApiKeyDialog } from './ApiKeyDialog';
 import { OpenAIService, ChatMessage as ChatMessageType, ChatSection, SYSTEM_MESSAGES, ChatThread } from '@/services/openai';
 import { ThreadManager } from '@/services/threadManager';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Gamepad2 } from 'lucide-react';
+import { MessageSquare, Gamepad2, Cloud } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import steamLogo from '@/assets/steam-logo.png';
 
 export const ChatInterface = () => {
   const [currentSection, setCurrentSection] = useState<ChatSection>('steam');
@@ -198,7 +197,7 @@ export const ChatInterface = () => {
     const iconSize = size === 'small' ? 'w-5 h-5' : size === 'medium' ? 'w-7 h-7' : 'w-8 h-8';
     switch (section) {
       case 'steam':
-        return <img src={steamLogo} alt="Steam" className={`${iconSize} bg-transparent`} />;
+        return <Cloud className={iconSize} />;
       case 'source2':
         return <Gamepad2 className={iconSize} />;
     }
