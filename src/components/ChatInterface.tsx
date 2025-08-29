@@ -36,11 +36,13 @@ export const ChatInterface = () => {
   const generateThreadTitle = async (userMessage: string, section: ChatSection, threadId: string) => {
     if (!openAIService) return;
     
+    console.log('🎯 Generating thread title for:', userMessage.substring(0, 50) + '...');
+    
     try {
       // Create a simple prompt for title generation
-      const titlePrompt = `Generate a short, concise title (4-6 words max) for a conversation that starts with: "${userMessage}"
+      const titlePrompt = `Generate a short, concise title (3-5 words) for this conversation: "${userMessage}"
 
-The title should be descriptive and capture the main topic. Return only the title, nothing else.`;
+Return only the title, nothing else.`;
 
       // Use gpt-5-mini for fast, efficient summarization
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -54,24 +56,43 @@ The title should be descriptive and capture the main topic. Return only the titl
           messages: [
             { role: 'user', content: titlePrompt }
           ],
-          max_completion_tokens: 20,
+          max_completion_tokens: 50, // Increased token limit
         }),
       });
+
+      console.log('🎯 Title generation response status:', response.status);
 
       if (response.ok) {
         const data = await response.json();
         const generatedTitle = data.choices[0]?.message?.content?.trim();
         
-        if (generatedTitle && generatedTitle !== userMessage) {
+        console.log('🎯 Generated title:', generatedTitle);
+        
+        if (generatedTitle && generatedTitle !== userMessage && generatedTitle.length > 0) {
           // Update thread name in storage and local state
           ThreadManager.updateThread(section, threadId, { name: generatedTitle });
           setCurrentThread(prev => prev ? { ...prev, name: generatedTitle } : null);
           // Trigger sidebar update to show new title
           setSidebarUpdateTrigger(prev => prev + 1);
+          console.log('🎯 Thread title updated to:', generatedTitle);
+        } else {
+          console.log('🎯 Invalid title generated, using fallback');
+          // Use fallback if title is invalid
+          const fallbackTitle = userMessage.slice(0, 30) + (userMessage.length > 30 ? '...' : '');
+          ThreadManager.updateThread(section, threadId, { name: fallbackTitle });
+          setCurrentThread(prev => prev ? { ...prev, name: fallbackTitle } : null);
+          setSidebarUpdateTrigger(prev => prev + 1);
         }
+      } else {
+        console.error('🎯 Title generation API error:', await response.text());
+        // Use fallback on API error
+        const fallbackTitle = userMessage.slice(0, 30) + (userMessage.length > 30 ? '...' : '');
+        ThreadManager.updateThread(section, threadId, { name: fallbackTitle });
+        setCurrentThread(prev => prev ? { ...prev, name: fallbackTitle } : null);
+        setSidebarUpdateTrigger(prev => prev + 1);
       }
     } catch (error) {
-      console.log('Failed to generate thread title:', error);
+      console.error('🎯 Title generation error:', error);
       // Fallback to truncated user message if LLM fails
       const fallbackTitle = userMessage.slice(0, 30) + (userMessage.length > 30 ? '...' : '');
       ThreadManager.updateThread(section, threadId, { name: fallbackTitle });
