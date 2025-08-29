@@ -110,7 +110,7 @@ export class MCPClient {
   private async startSSEConnection(): Promise<void> {
     if (!this.session) throw new Error('Session not initialized');
 
-    const url = new URL('/mcp', this.config.baseUrl);
+    const url = new URL(this.config.baseUrl);
     
     this.sseConnection = new EventSource(url.toString(), {
       // Note: EventSource doesn't support custom headers, so we'll use query params
@@ -231,7 +231,7 @@ export class MCPClient {
       headers['Authorization'] = `Bearer ${this.config.apiKey}`;
     }
 
-    const response = await fetch(`${this.config.baseUrl}/mcp`, {
+    const response = await fetch(this.config.baseUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({
