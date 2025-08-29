@@ -559,7 +559,7 @@ Return only the title, nothing else.`;
     // Poll until all tools have results
     const waitForToolResults = async () => {
       let attempts = 0;
-      const maxAttempts = 50; // 5 seconds timeout
+      const maxAttempts = 300; // 30 seconds timeout for MCP tools
       
       while (!checkAllToolsComplete() && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 100));
