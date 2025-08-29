@@ -24,6 +24,7 @@ export const ChatInterface = () => {
   const [mcpToolStatuses, setMcpToolStatuses] = useState<MCPToolStatus[]>([]);
   const [showMcpStatus, setShowMcpStatus] = useState(false);
   const [debugMode, setDebugMode] = useState(false); // Debug toggle
+  const [debugRequestAdded, setDebugRequestAdded] = useState<string | null>(null); // Track debug request
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -188,28 +189,35 @@ export const ChatInterface = () => {
 
     // Add debug message with OpenAI request if debug mode is enabled
     if (debugMode && currentThread) {
-      const debugRequestMessage: ChatMessageType = {
-        id: `debug-request-${Date.now()}`,
-        role: 'system',
-        content: `🚀 **OpenAI Request**\n\`\`\`json\n${JSON.stringify({
-          model: 'gpt-4o',
-          messages: messages.map(msg => ({
-            role: msg.role,
-            content: msg.content,
-            ...(msg.toolCalls && { tool_calls: msg.toolCalls }),
-            ...(msg.toolCallId && { tool_call_id: msg.toolCallId })
-          })),
-          tools: openAIService ? 'MCP tools enabled' : 'No tools',
-          max_tokens: 1500,
-          temperature: 0.7,
-          stream: true,
-          timestamp: new Date().toISOString()
-        }, null, 2)}\n\`\`\``,
-        timestamp: new Date(),
-      };
+      const debugRequestId = `debug-request-${Date.now()}`;
       
-      ThreadManager.addMessageToThread(currentSection, currentThread.id, debugRequestMessage);
-      setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, debugRequestMessage] } : null);
+      // Prevent duplicate debug request messages
+      if (debugRequestAdded !== debugRequestId) {
+        setDebugRequestAdded(debugRequestId);
+        
+        const debugRequestMessage: ChatMessageType = {
+          id: debugRequestId,
+          role: 'system',
+          content: `🚀 **OpenAI Request**\n\`\`\`json\n${JSON.stringify({
+            model: 'gpt-4o',
+            messages: messages.map(msg => ({
+              role: msg.role,
+              content: msg.content,
+              ...(msg.toolCalls && { tool_calls: msg.toolCalls }),
+              ...(msg.toolCallId && { tool_call_id: msg.toolCallId })
+            })),
+            tools: openAIService ? 'MCP tools enabled' : 'No tools',
+            max_tokens: 1500,
+            temperature: 0.7,
+            stream: true,
+            timestamp: new Date().toISOString()
+          }, null, 2)}\n\`\`\``,
+          timestamp: new Date(),
+        };
+        
+        ThreadManager.addMessageToThread(currentSection, currentThread.id, debugRequestMessage);
+        setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, debugRequestMessage] } : null);
+      }
     }
 
     try {
@@ -444,11 +452,6 @@ export const ChatInterface = () => {
     // Hide system messages except debug messages (show debug messages once added, regardless of current debug mode)
     if (m.role === 'system') {
       const isDebugMessage = m.content.includes('🔧 **MCP Tool Result') || m.content.includes('🚀 **OpenAI Request');
-      console.log('System message filter:', { 
-        id: m.id, 
-        isDebugMessage, 
-        contentStart: m.content.substring(0, 50) 
-      });
       return isDebugMessage;
     }
     // Hide assistant messages that are just for tool calls (empty content with toolCalls)
