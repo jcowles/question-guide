@@ -78,7 +78,7 @@ export const ChatSidebar = ({
   const currentThreads = threads[currentSection] || [];
 
   return (
-    <div className="w-80 border-r bg-background/50 backdrop-blur-sm flex flex-col h-full">
+    <div className="w-80 border-r bg-background-secondary/80 backdrop-blur-sm flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
