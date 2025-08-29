@@ -84,12 +84,8 @@ export class MCPClient {
       throw new Error('Initialize failed: No result in response');
     }
 
-    const sessionId = response.headers?.['mcp-session-id'];
-    const protocolVersion = response.headers?.['mcp-protocol-version'];
-
-    if (!sessionId || !protocolVersion) {
-      throw new Error('Initialize failed: Missing session headers');
-    }
+    const sessionId = response.headers?.['mcp-session-id'] || `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const protocolVersion = response.headers?.['mcp-protocol-version'] || response.result.protocolVersion || '2024-11-05';
 
     this.session = {
       sessionId,
