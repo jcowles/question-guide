@@ -22,6 +22,7 @@ export const ChatInterface = () => {
   const [showApiDialog, setShowApiDialog] = useState(false);
   const [sidebarUpdateTrigger, setSidebarUpdateTrigger] = useState(0);
   const [mcpToolStatuses, setMcpToolStatuses] = useState<MCPToolStatus[]>([]);
+  const [completedToolResults, setCompletedToolResults] = useState<MCPToolStatus[]>([]);
   const [showMcpStatus, setShowMcpStatus] = useState(false);
   const [debugMode, setDebugMode] = useState(false); // Debug toggle
   const [debugRequestAdded, setDebugRequestAdded] = useState<string | null>(null); // Track debug request
@@ -90,19 +91,25 @@ export const ChatInterface = () => {
   };
 
   const handleToolResult = (toolName: string, result: any, error?: string) => {
+    const completedStatus = {
+      toolName,
+      status: error ? 'error' as const : 'success' as const,
+      result,
+      error,
+      timestamp: new Date()
+    };
+    
+    // Update transient MCP status for status bar
     setMcpToolStatuses(prev => 
       prev.map(status => 
         status.toolName === toolName && status.status === 'calling'
-          ? { 
-              ...status, 
-              status: error ? 'error' as const : 'success' as const,
-              result,
-              error,
-              timestamp: new Date()
-            }
+          ? completedStatus
           : status
       )
     );
+    
+    // Add to persistent completed results for collapsible UI
+    setCompletedToolResults(prev => [...prev, completedStatus]);
 
     // Add debug message to chat if debug mode is enabled
     if (debugMode && currentThread) {
@@ -562,18 +569,9 @@ export const ChatInterface = () => {
                 .filter(({ msg }) => msg.role === 'assistant')
                 .pop()?.index;
             
-            const associatedToolResults = isLastAssistantMessage && mcpToolStatuses.length > 0 
-              ? mcpToolStatuses.filter(status => status.status === 'success' || status.status === 'error')
+            const associatedToolResults = isLastAssistantMessage && completedToolResults.length > 0 
+              ? completedToolResults.slice(-5) // Show last 5 tool results for the most recent AI message
               : [];
-            
-            console.log('Message association debug:', {
-              messageId: message.id,
-              messageRole: message.role,
-              isLastAssistantMessage,
-              mcpToolStatusesCount: mcpToolStatuses.length,
-              mcpToolStatuses: mcpToolStatuses,
-              associatedToolResultsCount: associatedToolResults.length
-            });
             
             return (
               <ChatMessage 
@@ -618,7 +616,7 @@ export const ChatInterface = () => {
                 timestamp: new Date(),
               }}
               streamingContent={streamingContent}
-              toolResults={mcpToolStatuses}
+              toolResults={completedToolResults.slice(-5)}
             />
           )}
           
