@@ -344,7 +344,20 @@ export const ChatInterface = () => {
     executedTools: any[], 
     aiMessageId: string
   ) => {
+    console.log('🔧 handleToolExecutionComplete called:', { 
+      originalMessagesCount: originalMessages.length, 
+      executedToolsCount: executedTools.length, 
+      aiMessageId,
+      openAIService: !!openAIService,
+      currentThread: !!currentThread
+    });
+    
     if (!openAIService || !currentThread || executedTools.length === 0) {
+      console.log('❌ Early return from handleToolExecutionComplete:', {
+        openAIService: !!openAIService,
+        currentThread: !!currentThread,
+        executedToolsLength: executedTools.length
+      });
       setIsLoading(false);
       setStreamingContent('');
       setStreamingMessageId(null);
@@ -372,6 +385,7 @@ export const ChatInterface = () => {
     };
 
     await waitForToolResults();
+    console.log('🔧 All tool results ready, proceeding with final response');
 
     // Create assistant message for tool calls first (don't show this in UI)
     const assistantMessage: ChatMessageType = {
@@ -381,6 +395,8 @@ export const ChatInterface = () => {
       timestamp: new Date(),
       toolCalls: executedTools.map(tool => tool.toolCall)
     };
+
+    console.log('🔧 Created assistant message:', assistantMessage);
 
     // Add assistant message to thread
     ThreadManager.addMessageToThread(currentSection, currentThread.id, assistantMessage);
@@ -394,9 +410,7 @@ export const ChatInterface = () => {
       console.log('Creating tool message:', { 
         toolName: tool.toolCall.function.name, 
         hasResult: !!tool.result,
-        result: tool.result,
-        error: tool.error,
-        content: content
+        content: content.substring(0, 100) + '...'
       });
       
       return {
@@ -408,12 +422,20 @@ export const ChatInterface = () => {
       };
     });
 
+    console.log('🔧 Created tool messages:', toolMessages.length);
+
     // Add tool messages to thread
     toolMessages.forEach(toolMsg => {
       ThreadManager.addMessageToThread(currentSection, currentThread.id, toolMsg);
     });
 
     const messagesWithTools = [...originalMessages, assistantMessage, ...toolMessages];
+    console.log('🔧 Final message chain:', {
+      originalMessages: originalMessages.length,
+      assistantMessage: 1,
+      toolMessages: toolMessages.length,
+      total: messagesWithTools.length
+    });
 
     // Get final response from the model with tool results
     try {
