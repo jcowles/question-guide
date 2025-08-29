@@ -434,10 +434,12 @@ export const ChatInterface = () => {
       await openAIService.sendMessageStream(
         messagesWithTools,
         (chunk: string) => {
+          console.log('📝 Final response chunk received:', chunk);
           finalResponse += chunk;
           setStreamingContent(finalResponse);
         },
         () => {
+          console.log('✅ Final response completed:', { finalResponse, length: finalResponse.length });
           // Final response completed
           const aiMessage: ChatMessageType = {
             id: aiMessageId,
@@ -446,6 +448,7 @@ export const ChatInterface = () => {
             timestamp: new Date(),
           };
 
+          console.log('💾 Adding final AI message to thread:', aiMessage);
           ThreadManager.addMessageToThread(currentSection, currentThread.id, aiMessage);
           setCurrentThread(prev => prev ? { 
             ...prev, 
