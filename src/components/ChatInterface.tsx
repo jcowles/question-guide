@@ -290,6 +290,13 @@ export const ChatInterface = () => {
           const toolIndex = executedTools.findIndex(t => 
             t.toolCall.function.name === toolName && t.result === null && t.error === null
           );
+          console.log('Updating tool result:', { 
+            toolName, 
+            toolIndex, 
+            result, 
+            error,
+            executedToolsLength: executedTools.length 
+          });
           if (toolIndex >= 0) {
             executedTools[toolIndex].result = result;
             executedTools[toolIndex].error = error;
@@ -334,15 +341,27 @@ export const ChatInterface = () => {
     ThreadManager.addMessageToThread(currentSection, currentThread.id, assistantMessage);
 
     // Create tool result messages with proper format for OpenAI API
-    const toolMessages = executedTools.map((tool, index) => ({
-      id: `tool-${Date.now()}-${index}`,
-      role: 'tool' as const,
-      content: tool.error 
+    const toolMessages = executedTools.map((tool, index) => {
+      const content = tool.error 
         ? `Error executing ${tool.toolCall.function.name}: ${tool.error}` 
-        : JSON.stringify(tool.result),
-      timestamp: new Date(),
-      toolCallId: tool.toolCall.id
-    }));
+        : (tool.result ? JSON.stringify(tool.result) : 'null');
+      
+      console.log('Creating tool message:', { 
+        toolName: tool.toolCall.function.name, 
+        hasResult: !!tool.result,
+        result: tool.result,
+        error: tool.error,
+        content: content
+      });
+      
+      return {
+        id: `tool-${Date.now()}-${index}`,
+        role: 'tool' as const,
+        content: content,
+        timestamp: new Date(),
+        toolCallId: tool.toolCall.id
+      };
+    });
 
     // Add tool messages to thread
     toolMessages.forEach(toolMsg => {
