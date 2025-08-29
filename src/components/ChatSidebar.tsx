@@ -8,11 +8,11 @@ import {
   MessageSquare, 
   Settings, 
   Trash2,
-  Cloud,
   Gamepad2
 } from 'lucide-react';
 import { ChatThread, ChatSection } from '@/services/openai';
 import { ThreadManager } from '@/services/threadManager';
+import steamLogo from '@/assets/steam-logo.png';
 
 interface ChatSidebarProps {
   currentSection: ChatSection;
@@ -51,7 +51,7 @@ export const ChatSidebar = ({
   const getSectionIcon = (section: ChatSection) => {
     switch (section) {
       case 'steam':
-        return <Cloud size={16} />;
+        return <img src={steamLogo} alt="Steam" className="w-4 h-4" />;
       case 'source2':
         return <Gamepad2 size={16} />;
     }
