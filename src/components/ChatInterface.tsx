@@ -1,14 +1,16 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { ChatSidebar } from './ChatSidebar';
 import { ApiKeyDialog } from './ApiKeyDialog';
 import { MCPStatusBar } from './MCPStatusBar';
+import { MCPSettings } from './MCPSettings';
 import { OpenAIService, ChatMessage as ChatMessageType, ChatSection, SYSTEM_MESSAGES, ChatThread, ToolCall, MCPToolStatus } from '@/services/openai';
+import { MCPClient } from '@/services/mcpClient';
 import { ThreadManager } from '@/services/threadManager';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Gamepad2, Cloud, Bug } from 'lucide-react';
+import { MessageSquare, Gamepad2, Cloud, Bug, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export const ChatInterface = () => {
@@ -29,8 +31,21 @@ export const ChatInterface = () => {
   const [debugMode, setDebugMode] = useState(false); // Debug toggle
   const [debugRequestAdded, setDebugRequestAdded] = useState<string | null>(null); // Track debug request
   const [debugInfo, setDebugInfo] = useState<{messageId: string, toolResultCount: number, action: string}[]>([]); // Debug tool result tracking
+  const [mcpClient, setMcpClient] = useState<MCPClient | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  const initializeOpenAI = useCallback((apiKey: string) => {
+    const service = new OpenAIService(apiKey, mcpClient);
+    setOpenAIService(service);
+  }, [mcpClient]);
+
+  // Update OpenAI service when MCP client changes
+  useEffect(() => {
+    if (openAIService && mcpClient) {
+      openAIService.setMCPClient(mcpClient);
+    }
+  }, [openAIService, mcpClient]);
 
   // Function to generate a concise thread title using LLM
   const generateThreadTitle = async (userMessage: string, section: ChatSection, threadId: string) => {
@@ -104,11 +119,12 @@ Return only the title, nothing else.`;
   useEffect(() => {
     const apiKey = OpenAIService.getApiKey();
     if (apiKey) {
-      setOpenAIService(new OpenAIService(apiKey));
+      const service = new OpenAIService(apiKey, mcpClient);
+      setOpenAIService(service);
     } else {
       setShowApiDialog(true);
     }
-  }, []);
+  }, [mcpClient]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -132,7 +148,8 @@ Return only the title, nothing else.`;
 
   const handleApiKeySaved = (key: string) => {
     OpenAIService.setApiKey(key);
-    setOpenAIService(new OpenAIService(key));
+    const service = new OpenAIService(key, mcpClient);
+    setOpenAIService(service);
     toast({
       title: "API Key Saved",
       description: "You can now start chatting with AI!",
@@ -803,24 +820,30 @@ Return only the title, nothing else.`;
               <p className="text-sm text-muted-foreground">{getSectionDescription(currentSection)}</p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setDebugMode(!debugMode)}
-            className={debugMode ? "text-orange-600" : ""}
-          >
-            <Bug className="w-4 h-4 mr-2" />
-            {debugMode ? "Debug ON" : "Debug"}
-          </Button>
-          {debugMode && (
+          <div className="flex items-center gap-2">
+            <MCPSettings 
+              mcpClient={mcpClient}
+              onClientChange={setMcpClient}
+            />
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setDebugInfo([])}
+              onClick={() => setDebugMode(!debugMode)}
+              className={debugMode ? "text-orange-600" : ""}
             >
-              Clear Debug
+              <Bug className="w-4 h-4 mr-2" />
+              {debugMode ? "Debug ON" : "Debug"}
             </Button>
-          )}
+            {debugMode && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDebugInfo([])}
+              >
+                Clear Debug
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Messages */}

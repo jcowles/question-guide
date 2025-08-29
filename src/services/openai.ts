@@ -51,66 +51,15 @@ export const SYSTEM_MESSAGES: Record<ChatSection, string> = {
 export class OpenAIService {
   private apiKey: string;
   private baseURL = 'https://api.openai.com/v1';
-  private mcpTools = [
-    {
-      type: "function",
-      function: {
-        name: "web_search",
-        description: "Search the web for current information",
-        parameters: {
-          type: "object",
-          properties: {
-            query: {
-              type: "string",
-              description: "Search query"
-            }
-          },
-          required: ["query"]
-        }
-      }
-    },
-    {
-      type: "function", 
-      function: {
-        name: "file_analyzer",
-        description: "Analyze file contents and structure",
-        parameters: {
-          type: "object",
-          properties: {
-            filePath: {
-              type: "string",
-              description: "Path to the file to analyze"
-            }
-          },
-          required: ["filePath"]
-        }
-      }
-    },
-    {
-      type: "function",
-      function: {
-        name: "code_executor",
-        description: "Execute code snippets safely",
-        parameters: {
-          type: "object", 
-          properties: {
-            code: {
-              type: "string",
-              description: "Code to execute"
-            },
-            language: {
-              type: "string",
-              description: "Programming language"
-            }
-          },
-          required: ["code", "language"]
-        }
-      }
-    }
-  ];
+  private mcpClient: any = null; // Will be injected from ChatInterface
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, mcpClient?: any) {
     this.apiKey = apiKey;
+    this.mcpClient = mcpClient;
+  }
+
+  setMCPClient(mcpClient: any) {
+    this.mcpClient = mcpClient;
   }
 
   // Debug mode setter
@@ -179,7 +128,7 @@ export class OpenAIService {
           
           return baseMessage;
         }),
-        ...(this.mcpTools.length > 0 && { tools: this.mcpTools, tool_choice: "auto" }),
+        ...(await this.getMCPTools()),
         max_tokens: 1500,
         temperature: 0.7,
         stream: true,
@@ -283,7 +232,7 @@ export class OpenAIService {
                     };
                     
                     onToolCall(completeToolCall);
-                    // Simulate tool execution
+                    // Execute MCP tool
                     this.executeMCPTool(completeToolCall, onToolResult);
                   }
                 }
@@ -312,27 +261,56 @@ export class OpenAIService {
     localStorage.removeItem('openai-api-key');
   }
 
+  private async getMCPTools(): Promise<{ tools?: any[], tool_choice?: string }> {
+    if (!this.mcpClient?.isConnected()) {
+      return {};
+    }
+
+    try {
+      const mcpTools = await this.mcpClient.getTools();
+      const tools = mcpTools.map((tool: any) => ({
+        type: "function",
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.inputSchema
+        }
+      }));
+
+      return tools.length > 0 ? { tools, tool_choice: "auto" } : {};
+    } catch (error) {
+      console.error('Failed to get MCP tools:', error);
+      return {};
+    }
+  }
+
   private async executeMCPTool(toolCall: ToolCall, onToolResult?: (toolName: string, result: any, error?: string) => void): Promise<void> {
     const { name, arguments: args } = toolCall.function;
     
     try {
       let result: any;
       
-      switch (name) {
-        case 'web_search':
-          // Use actual web search instead of mock
-          const searchQuery = JSON.parse(args).query;
-          result = await this.performActualWebSearch(searchQuery);
-          break;
-        case 'file_analyzer':
-          result = await this.simulateFileAnalysis(JSON.parse(args).filePath);
-          break;
-        case 'code_executor':
-          const { code, language } = JSON.parse(args);
-          result = await this.simulateCodeExecution(code, language);
-          break;
-        default:
-          throw new Error(`Unknown tool: ${name}`);
+      if (this.mcpClient?.isConnected()) {
+        // Use real MCP client
+        const parsedArgs = JSON.parse(args);
+        result = await this.mcpClient.callTool(name, parsedArgs);
+      } else {
+        // Fallback to mock implementations
+        switch (name) {
+          case 'web_search':
+            const searchQuery = JSON.parse(args).query;
+            result = await this.performActualWebSearch(searchQuery);
+            break;
+          case 'file_analyzer':
+            result = await this.simulateFileAnalysis(JSON.parse(args).filePath);
+            break;
+          case 'code_executor':
+            const { code, language } = JSON.parse(args);
+            result = await this.simulateCodeExecution(code, language);
+            break;
+          default:
+            throw new Error(`Unknown tool: ${name}`);
+        }
       }
       
       onToolResult?.(name, result);
