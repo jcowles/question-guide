@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
@@ -264,6 +265,9 @@ export const ChatInterface = () => {
       toolCalls: executedTools.map(tool => tool.toolCall)
     };
 
+    // Add assistant message to thread
+    ThreadManager.addMessageToThread(currentSection, currentThread.id, assistantMessage);
+
     // Create tool result messages with proper format for OpenAI API
     const toolMessages = executedTools.map((tool, index) => ({
       id: `tool-${Date.now()}-${index}`,
@@ -274,6 +278,11 @@ export const ChatInterface = () => {
       timestamp: new Date(),
       toolCallId: tool.toolCall.id
     }));
+
+    // Add tool messages to thread
+    toolMessages.forEach(toolMsg => {
+      ThreadManager.addMessageToThread(currentSection, currentThread.id, toolMsg);
+    });
 
     const messagesWithTools = [...originalMessages, assistantMessage, ...toolMessages];
 
@@ -298,7 +307,10 @@ export const ChatInterface = () => {
           };
 
           ThreadManager.addMessageToThread(currentSection, currentThread.id, aiMessage);
-          setCurrentThread(prev => prev ? { ...prev, messages: [...prev.messages, aiMessage] } : null);
+          setCurrentThread(prev => prev ? { 
+            ...prev, 
+            messages: [...prev.messages, assistantMessage, ...toolMessages, aiMessage] 
+          } : null);
           setIsLoading(false);
           setStreamingContent('');
           setStreamingMessageId(null);

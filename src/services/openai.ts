@@ -159,13 +159,24 @@ export class OpenAIService {
         },
         body: JSON.stringify({
           model: 'gpt-4o',
-          messages: messages.map(msg => ({
-            role: msg.role,
-            content: msg.content,
-            ...(msg.toolCalls && { tool_calls: msg.toolCalls }),
-            ...(msg.toolCallId && { tool_call_id: msg.toolCallId }),
-            ...(msg.role === 'assistant' && msg.content === null && { content: null })
-          })),
+          messages: messages.map(msg => {
+            const baseMessage = {
+              role: msg.role,
+              content: msg.content,
+            };
+            
+            // Add tool_calls if present
+            if (msg.toolCalls) {
+              baseMessage.tool_calls = msg.toolCalls;
+            }
+            
+            // Add tool_call_id for tool messages
+            if (msg.toolCallId) {
+              baseMessage.tool_call_id = msg.toolCallId;
+            }
+            
+            return baseMessage;
+          }),
           ...(this.mcpTools.length > 0 && { tools: this.mcpTools, tool_choice: "auto" }),
           max_tokens: 1500,
           temperature: 0.7,
