@@ -543,11 +543,10 @@ export const ChatInterface = () => {
            };
 
           console.log('💾 Adding final AI message to thread:', aiMessage);
-          console.log('🔍 DEBUG: Before association check:', {
-            currentSessionToolResultsLength: currentSessionToolResults.length,
-            currentSessionToolResults: currentSessionToolResults.map(r => ({ toolName: r.toolName, hasResult: !!r.result })),
-            aiMessageId: aiMessage.id
-          });
+          console.log('🔍 DEBUG: Before association check:');
+          console.log('🔍 currentSessionToolResultsLength:', currentSessionToolResults.length);
+          console.log('🔍 currentSessionToolResults details:', currentSessionToolResults.map(r => ({ toolName: r.toolName, hasResult: !!r.result })));
+          console.log('🔍 aiMessageId:', aiMessage.id);
           
           ThreadManager.addMessageToThread(currentSection, currentThread.id, aiMessage);
           setCurrentThread(prev => prev ? { 
@@ -556,6 +555,7 @@ export const ChatInterface = () => {
           } : null);
           
            // Associate current session tool results with this message
+           console.log('🔍 About to check if currentSessionToolResults.length > 0:', currentSessionToolResults.length > 0);
            if (currentSessionToolResults.length > 0) {
              console.log('🔗 ASSOCIATING TOOL RESULTS (with tools):', {
                messageId: aiMessage.id,
